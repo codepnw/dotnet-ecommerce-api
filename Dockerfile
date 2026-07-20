@@ -6,9 +6,9 @@ FROM mcr.microsoft.com/dotnet/sdk:10.0 AS build
 WORKDIR /src
 
 # Copy solution and project files
-COPY AuthAPI.slnx .
-COPY AuthAPI/AuthAPI.csproj AuthAPI/
-COPY AuthAPI.Tests/AuthAPI.Tests.csproj AuthAPI.Tests/
+COPY EcommerceAPI.slnx .
+COPY EcommerceAPI/EcommerceAPI.csproj EcommerceAPI/
+COPY EcommerceAPI.Tests/EcommerceAPI.Tests.csproj EcommerceAPI.Tests/
 
 # Restore dependencies
 RUN dotnet restore
@@ -27,7 +27,7 @@ RUN dotnet test -c Release --no-build --verbosity normal
 # =======================
 
 FROM build AS publish
-RUN dotnet publish AuthAPI/AuthAPI.csproj -c Release -o /app/publish --no-build
+RUN dotnet publish EcommerceAPI/EcommerceAPI.csproj -c Release -o /app/publish --no-build
 
 # =======================
 # State 3: Runtime
@@ -47,4 +47,4 @@ ENV ASPNETCORE_URLS=http://+:8080
 ENV ASPNETCORE_ENVIRONMENT=Production
 
 # Run
-ENTRYPOINT ["dotnet", "AuthAPI.dll"]
+ENTRYPOINT ["dotnet", "EcommerceAPI.dll"]

@@ -11,10 +11,10 @@ docker-build:
 	docker build -t dotnet-auth-api .
 
 migrations-add:
-	dotnet ef migrations --project AuthAPI add $(NAME) --output-dir ./Data/Migrations
+	dotnet ef migrations --project EcommerceAPI add $(NAME) --output-dir ./Data/Migrations
 
 migrations-update:
-	dotnet ef --project AuthAPI database update
+	dotnet ef --project EcommerceAPI database update
 	
 gh-run:
 	gh workflow run ci.yml

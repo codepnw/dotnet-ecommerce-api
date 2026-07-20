@@ -1,4 +1,4 @@
 <Solution>
-  <Project Path="AuthAPI.Tests/AuthAPI.Tests.csproj" />
-  <Project Path="AuthAPI/AuthAPI.csproj" />
+  <Project Path="EcommerceAPI.Tests/EcommerceAPI.Tests.csproj" />
+  <Project Path="EcommerceAPI/EcommerceAPI.csproj" />
 </Solution>
