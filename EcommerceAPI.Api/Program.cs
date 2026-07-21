@@ -5,6 +5,7 @@ using Microsoft.IdentityModel.Tokens;
 using System.Text;
 using System.Threading.RateLimiting;
 using EcommerceAPI.Data;
+using EcommerceAPI.Infrastructure;
 using EcommerceAPI.Middleware;
 using EcommerceAPI.Services;
 using FluentValidation;
@@ -37,6 +38,10 @@ try
     // Dependency Injection
     builder.Services.AddScoped<IAuthService, AuthService>();
     builder.Services.AddScoped<IOAuthService, OAuthService>();
+    
+    // Add Infrastructure
+    builder.Services.AddInfrastructure(builder.Configuration);
+    builder.Services.AddHttpContextAccessor();
 
     // Add JWT Authentication
     builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)

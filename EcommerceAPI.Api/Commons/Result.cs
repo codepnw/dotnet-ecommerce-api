@@ -27,15 +27,15 @@ public class Result<T>(bool isSuccess, T? data, string? errorMessage, ErrorCode 
         new(false, default, errorMessage, errorCode);
 }
 
-public class Result(bool isSuccess, string? errorMessage, int errorCode)
+public class Result(bool isSuccess, string? errorMessage, ErrorCode errorCode)
 {
     public readonly bool IsSuccess = isSuccess;
     public readonly string? ErrorMessage = errorMessage;
-    public readonly int ErrorCode = errorCode;
+    public readonly ErrorCode ErrorCode = errorCode;
 
     public static Result Success() =>
         new(true, null, 0);
 
-    public static Result Failure(string errorMessage, int errorCode) =>
+    public static Result Failure(string errorMessage, ErrorCode errorCode) =>
         new(false, errorMessage, errorCode);
 }
