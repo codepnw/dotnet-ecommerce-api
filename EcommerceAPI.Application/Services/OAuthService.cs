@@ -1,7 +1,9 @@
-using EcommerceAPI.DTOs.Responses;
+using EcommerceAPI.Application.DTOs.Responses;
 using Google.Apis.Auth;
+using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.Logging;
 
-namespace EcommerceAPI.Services;
+namespace EcommerceAPI.Application.Services;
 
 public interface IOAuthService
 {

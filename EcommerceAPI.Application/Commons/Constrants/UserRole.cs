@@ -1,4 +1,4 @@
-﻿namespace EcommerceAPI.Commons.Constrants;
+﻿namespace EcommerceAPI.Application.Commons.Constrants;
 
 public static class UserRoles
 {

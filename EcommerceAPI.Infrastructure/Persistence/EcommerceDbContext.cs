@@ -9,6 +9,7 @@ public class EcommerceDbContext(
     AuditableEntityInterceptor auditorInterceptor
 ) : DbContext(options)
 {
+    public DbSet<User> Users => Set<User>();
     public DbSet<Category> Categories => Set<Category>();
     public DbSet<Product> Products => Set<Product>();
     public DbSet<ProductInventory> ProductInventories => Set<ProductInventory>();

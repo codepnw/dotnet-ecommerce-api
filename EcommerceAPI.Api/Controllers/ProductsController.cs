@@ -1,4 +1,4 @@
-﻿using EcommerceAPI.Commons.Constrants;
+﻿using EcommerceAPI.Application.Commons.Constrants;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 

@@ -1,5 +1,7 @@
+using EcommerceAPI.Application.Interfaces;
 using EcommerceAPI.Infrastructure.Persistence;
 using EcommerceAPI.Infrastructure.Persistence.Interceptors;
+using EcommerceAPI.Infrastructure.Repositories;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
@@ -11,6 +13,9 @@ public static class DependencyInjection
     public static IServiceCollection AddInfrastructure(this IServiceCollection service, IConfiguration configuration)
     {
         service.AddScoped<AuditableEntityInterceptor>();
+        
+        // Register Repositories
+        service.AddScoped<IUserRepository, UserRepository>();
 
         service.AddDbContext<EcommerceDbContext>(options =>
         {

@@ -1,7 +1,7 @@
-using EcommerceAPI.DTOs.Requests;
+using EcommerceAPI.Application.DTOs.Requests;
 using FluentValidation;
 
-namespace EcommerceAPI.Validators;
+namespace EcommerceAPI.Application.Validators;
 
 public class RefreshTokenRequestValidator : AbstractValidator<RefreshTokenRequest>
 {

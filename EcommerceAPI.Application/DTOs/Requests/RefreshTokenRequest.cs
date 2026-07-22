@@ -1,4 +1,4 @@
-﻿namespace EcommerceAPI.DTOs.Requests;
+﻿namespace EcommerceAPI.Application.DTOs.Requests;
 
 public class RefreshTokenRequest
 {

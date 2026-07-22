@@ -1,4 +1,4 @@
-using EcommerceAPI.Commons;
+using EcommerceAPI.Domain.Shared;
 using BaseAuditableEntity = EcommerceAPI.Domain.Common.BaseAuditableEntity;
 
 namespace EcommerceAPI.Domain.Entities;
@@ -22,7 +22,7 @@ public class ProductInventory : BaseAuditableEntity
         if (AvailableQuantity < quantity)
             return Result.Failure("Insufficient stock available", ErrorCode.Conflict);
 
-        QuantityOnHand += quantity;
+        QuantityReserved += quantity;
         return Result.Success();
     }
 

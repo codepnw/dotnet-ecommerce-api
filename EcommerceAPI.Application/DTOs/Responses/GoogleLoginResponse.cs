@@ -1,4 +1,4 @@
-namespace EcommerceAPI.DTOs.Responses;
+namespace EcommerceAPI.Application.DTOs.Responses;
 
 public class GoogleLoginResponse
 {

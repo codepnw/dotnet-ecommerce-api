@@ -2,16 +2,18 @@
 using System.Security.Claims;
 using System.Security.Cryptography;
 using System.Text;
-using EcommerceAPI.Commons;
-using EcommerceAPI.Commons.Constrants;
-using EcommerceAPI.Data;
-using EcommerceAPI.DTOs.Requests;
-using EcommerceAPI.DTOs.Responses;
-using EcommerceAPI.Models;
-using Microsoft.EntityFrameworkCore;
+using EcommerceAPI.Application.Commons;
+using EcommerceAPI.Application.Commons.Constrants;
+using EcommerceAPI.Application.DTOs.Requests;
+using EcommerceAPI.Application.DTOs.Responses;
+using EcommerceAPI.Application.Interfaces;
+using EcommerceAPI.Domain.Entities;
+using EcommerceAPI.Domain.Shared;
+using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.Logging;
 using Microsoft.IdentityModel.Tokens;
 
-namespace EcommerceAPI.Services;
+namespace EcommerceAPI.Application.Services;
 
 public interface IAuthService
 {
@@ -24,7 +26,7 @@ public interface IAuthService
 }
 
 public class AuthService(
-    AppDbContext context,
+    IUserRepository userRepository,
     IConfiguration config,
     ILogger<AuthService> logger,
     IOAuthService oauthService
@@ -32,29 +34,24 @@ public class AuthService(
 {
     public async Task<Result<TokenResponse>> Register(RegisterRequest request)
     {
-        // Check Email Exists
-        if (await context.Users.AnyAsync(u => u.Email == request.Email))
+        if (await userRepository.ExistsByEmailAsync(request.Email))
         {
             logger.LogWarning("Register Failed: {Email} already exists", request.Email);
             return Result<TokenResponse>.Failure("Email already exists", ErrorCode.Conflict);
         }
 
-        var user = new User
+        var user = await userRepository.CreateAsync(new User
         {
             Email = request.Email,
             PasswordHash = BCrypt.Net.BCrypt.HashPassword(request.Password),
-        };
-
-        // Save User
-        context.Users.Add(user);
-        await context.SaveChangesAsync();
-
+        });
+        
         // Generate Token Response
         var tokenResponse = GenerateTokenResponse(user);
 
         user.RefreshToken = tokenResponse.RefreshToken;
         user.RefreshTokenExpiry = GetRefreshTokenExpiry();
-        await context.SaveChangesAsync();
+        await userRepository.UpdateAsync(user);
 
         return Result<TokenResponse>.Success(tokenResponse);
     }
@@ -62,7 +59,7 @@ public class AuthService(
     public async Task<Result<TokenResponse>> Login(LoginRequest request)
     {
         // Find Email
-        var user = await context.Users.FirstOrDefaultAsync(u => u.Email == request.Email);
+        var user = await userRepository.GetByEmailAsync(request.Email);
         if (user is null)
         {
             logger.LogWarning("Login Failed: Email: {Email} not found", request.Email);
@@ -82,7 +79,7 @@ public class AuthService(
         user.LastLoginAt = DateTime.UtcNow;
         user.RefreshToken = tokenResponse.RefreshToken;
         user.RefreshTokenExpiry = GetRefreshTokenExpiry();
-        await context.SaveChangesAsync();
+        await userRepository.UpdateAsync(user);
 
         return Result<TokenResponse>.Success(tokenResponse);
     }
@@ -90,7 +87,7 @@ public class AuthService(
     public async Task<Result<TokenResponse>> RefreshToken(RefreshTokenRequest request)
     {
         // Find Refresh Token
-        var user = await context.Users.FirstOrDefaultAsync(u => u.RefreshToken == request.RefreshToken);
+        var user = await userRepository.GetByRefreshToken(request.RefreshToken);
         if (user is null)
         {
             logger.LogWarning("Refresh Token Failed: {Token} invalid", request.RefreshToken);
@@ -109,7 +106,7 @@ public class AuthService(
 
         user.RefreshToken = tokenResponse.RefreshToken;
         user.RefreshTokenExpiry = GetRefreshTokenExpiry();
-        await context.SaveChangesAsync();
+        await userRepository.UpdateAsync(user);
 
         return Result<TokenResponse>.Success(tokenResponse);
     }
@@ -126,7 +123,7 @@ public class AuthService(
         logger.LogInformation("Google login email: {Email}", userInfo.Email);
         
         // Find from GoogleId
-        var user = await context.Users.FirstOrDefaultAsync(u => u.GoogleId == userInfo.GoogleId);
+        var user = await userRepository.GetByGoogleIdAsync(request.IdToken);
 
         if (user != null)
         {
@@ -136,7 +133,8 @@ public class AuthService(
         else
         {
             // Find from Email
-            user = await context.Users.FirstOrDefaultAsync(u => u.Email == userInfo.Email);
+            // user = await context.Users.FirstOrDefaultAsync(u => u.Email == userInfo.Email);
+            user = await userRepository.GetByEmailAsync(userInfo.Email);
 
             if (user != null)
             {
@@ -165,7 +163,8 @@ public class AuthService(
                     PasswordHash = ""
                 };
 
-                context.Users.Add(user);
+                // context.Users.Add(user);
+                await userRepository.CreateAsync(user);
                 logger.LogInformation("Created new user from Google login: {Email}", userInfo.Email);
             }
         }
@@ -177,8 +176,7 @@ public class AuthService(
         user.LastLoginAt = DateTime.UtcNow;
         user.RefreshToken = response.RefreshToken;
         user.RefreshTokenExpiry = GetRefreshTokenExpiry();
-        // Save Data
-        await context.SaveChangesAsync();
+        await userRepository.UpdateAsync(user);
 
         return Result<TokenResponse>.Success(response);
     }
