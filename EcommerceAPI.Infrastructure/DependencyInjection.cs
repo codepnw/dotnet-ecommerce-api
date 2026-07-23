@@ -20,7 +20,7 @@ public static class DependencyInjection
         service.AddDbContext<EcommerceDbContext>(options =>
         {
             options.UseSqlServer(
-                configuration.GetConnectionString("DefaultConnection"),
+                configuration.GetConnectionString("Default"),
                 sqlOptions =>
                 {
                     sqlOptions.MigrationsAssembly(typeof(EcommerceDbContext).Assembly.FullName);

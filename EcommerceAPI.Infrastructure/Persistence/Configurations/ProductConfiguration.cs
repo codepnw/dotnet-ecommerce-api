@@ -33,7 +33,7 @@ public class ProductConfiguration : IEntityTypeConfiguration<Product>
         {
             price.Property(m => m.Amount)
                 .HasColumnName("Price_Amount")
-                .HasColumnType("decimal(18,2");
+                .HasColumnType("decimal(18,2)");
 
             price.Property(m => m.Currency)
                 .HasColumnName("Price_Currency")
