@@ -16,6 +16,7 @@ public static class DependencyInjection
         
         // Register Repositories
         service.AddScoped<IUserRepository, UserRepository>();
+        service.AddScoped<IProductRepository, ProductRepository>();
 
         service.AddDbContext<EcommerceDbContext>(options =>
         {

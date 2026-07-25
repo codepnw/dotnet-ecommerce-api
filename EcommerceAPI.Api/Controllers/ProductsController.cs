@@ -1,32 +1,73 @@
-﻿using EcommerceAPI.Application.Commons.Constrants;
-using Microsoft.AspNetCore.Authorization;
+﻿using EcommerceAPI.Application.DTOs.Products;
+using EcommerceAPI.Application.Services;
+using EcommerceAPI.Domain.Shared;
 using Microsoft.AspNetCore.Mvc;
 
 namespace EcommerceAPI.Controllers;
 
 [ApiController]
 [Route("api/[controller]")]
-[Authorize]
-public class ProductsController : ControllerBase
+// [Authorize]
+public class ProductsController(ProductService productService) : ControllerBase
 {
-    // ======================= Example Protected Routes =================
-
-    private static readonly string[] Value = ["Product 1", "Product 2", "Product 3"];
-
-    [HttpGet]
-    public IActionResult GetAll()
+    [HttpPost]
+    public async Task<IActionResult> CreateProduct([FromBody] CreateProductRequest request)
     {
-        return Ok(new
+        var result = await productService.CreateProductAsync(request);
+
+        if (!result.IsSuccess)
         {
-            message = "You have access!",
-            products = Value
-        });
+            return result.ErrorCode switch
+            {
+                ErrorCode.Conflict => Conflict(new { message = result.ErrorMessage }),
+                _ => BadRequest(new { message = result.ErrorMessage })
+            };
+        }
+
+        return CreatedAtAction(nameof(GetProductById), new { id = result.Data!.Id });
     }
 
-    [HttpGet("admin-only")]
-    [Authorize(Roles = UserRoles.Admin)]
-    public IActionResult GetAdminData()
+    [HttpGet]
+    public async Task<IActionResult> GetAllProducts()
     {
-        return Ok(new { message = "Admin Only!" });
+        var result = await productService.GetAllProductsAsync();
+
+        if (!result.IsSuccess)
+            return BadRequest(result.ErrorMessage);
+
+        return Ok(result.Data);
+    }
+
+    [HttpGet("{id:guid}")]
+    public async Task<IActionResult> GetProductById(Guid id)
+    {
+        var result = await productService.GetProductByIdAsync(id);
+
+        if (!result.IsSuccess)
+            return BadRequest(result.ErrorMessage);
+
+        return Ok(result.Data);
+    }
+
+    [HttpPut("{id:guid}")]
+    public async Task<IActionResult> UpdateProduct(Guid id, [FromBody] UpdateProductRequest request)
+    {
+        var result = await productService.UpdateProductAsync(id, request);
+        
+        if (!result.IsSuccess)
+            return BadRequest(result.ErrorMessage);
+
+        return Ok();
+    }
+    
+    [HttpDelete("{id:guid}")]
+    public async Task<IActionResult> DeleteProduct(Guid id)
+    {
+        var result = await productService.DeleteProductAsync(id);
+
+        if (!result.IsSuccess)
+            return BadRequest(result.ErrorMessage);
+
+        return NoContent();
     }
 }

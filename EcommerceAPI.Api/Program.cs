@@ -1,12 +1,13 @@
-using Microsoft.AspNetCore.Authentication.JwtBearer;
-using Microsoft.IdentityModel.Tokens;
 using System.Text;
 using System.Threading.RateLimiting;
+using EcommerceAPI.Application;
 using EcommerceAPI.Application.Services;
 using EcommerceAPI.Infrastructure;
 using EcommerceAPI.Infrastructure.Persistence;
 using EcommerceAPI.Middleware;
 using FluentValidation;
+using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.IdentityModel.Tokens;
 using Serilog;
 
 Log.Logger = new LoggerConfiguration()
@@ -26,13 +27,13 @@ try
         .Enrich.FromLogContext()
         .WriteTo.Console()
     );
-
-    // Dependency Injection
-    builder.Services.AddScoped<IAuthService, AuthService>();
-    builder.Services.AddScoped<IOAuthService, OAuthService>();
     
-    // Add Infrastructure
+    // Add Infrastructure Layer
     builder.Services.AddInfrastructure(builder.Configuration);
+    
+    // Add Application Layer
+    builder.Services.AddApplication();
+    
     builder.Services.AddHttpContextAccessor();
 
     // Add JWT Authentication
