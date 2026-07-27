@@ -1,6 +1,6 @@
 ﻿using EcommerceAPI.Domain.Enums;
 
-namespace EcommerceAPI.Application.DTOs.Requests;
+namespace EcommerceAPI.Application.DTOs.Auth;
 
 public class RegisterRequest
 {

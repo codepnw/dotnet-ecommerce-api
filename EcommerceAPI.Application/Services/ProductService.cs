@@ -1,5 +1,6 @@
 using EcommerceAPI.Application.DTOs.Products;
 using EcommerceAPI.Application.Interfaces;
+using EcommerceAPI.Application.Interfaces.Repositories;
 using EcommerceAPI.Application.Interfaces.Services;
 using EcommerceAPI.Application.Mappings;
 using EcommerceAPI.Domain.Shared;

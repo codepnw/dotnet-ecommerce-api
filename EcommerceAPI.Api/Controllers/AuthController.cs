@@ -1,6 +1,6 @@
 ﻿using System.Security.Claims;
 using EcommerceAPI.Application.Commons;
-using EcommerceAPI.Application.DTOs.Requests;
+using EcommerceAPI.Application.DTOs.Auth;
 using EcommerceAPI.Application.Services;
 using EcommerceAPI.Domain.Shared;
 using FluentValidation;

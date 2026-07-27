@@ -1,4 +1,5 @@
 using EcommerceAPI.Application.Interfaces;
+using EcommerceAPI.Application.Interfaces.Repositories;
 using EcommerceAPI.Infrastructure.Persistence;
 using EcommerceAPI.Infrastructure.Persistence.Interceptors;
 using EcommerceAPI.Infrastructure.Repositories;
@@ -17,6 +18,7 @@ public static class DependencyInjection
         // Register Repositories
         service.AddScoped<IUserRepository, UserRepository>();
         service.AddScoped<IProductRepository, ProductRepository>();
+        service.AddScoped<ICategoryRepository, CategoryRepository>();
 
         service.AddDbContext<EcommerceDbContext>(options =>
         {

@@ -1,4 +1,5 @@
 using EcommerceAPI.Application.DTOs.Products;
+using EcommerceAPI.Domain.Common.Extensions;
 using EcommerceAPI.Domain.Common.ValueObject;
 using EcommerceAPI.Domain.Entities;
 
@@ -25,7 +26,7 @@ public static class ProductMappingExtensions
         {
             Name = request.Name,
             Sku = request.Sku,
-            Slug = GenerateSlug(request.Name),
+            Slug = request.Name.GenerateSlug(),
             Price = Money.Create(request.PriceAmount, request.PriceCurrency),
             CategoryId = request.CategoryId,
 
@@ -51,9 +52,4 @@ public static class ProductMappingExtensions
 
         product.Price = Money.Create(request.PriceAmount, currency);
     } 
-
-    private static string GenerateSlug(string name)
-    {
-        return name.ToLower().Replace(" ", "-");
-    }
 }

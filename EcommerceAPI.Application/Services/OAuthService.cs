@@ -1,4 +1,4 @@
-using EcommerceAPI.Application.DTOs.Responses;
+using EcommerceAPI.Application.DTOs.Auth;
 using Google.Apis.Auth;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;

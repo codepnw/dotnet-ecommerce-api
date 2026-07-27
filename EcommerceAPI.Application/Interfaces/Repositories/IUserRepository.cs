@@ -1,6 +1,6 @@
 using EcommerceAPI.Domain.Entities;
 
-namespace EcommerceAPI.Application.Interfaces;
+namespace EcommerceAPI.Application.Interfaces.Repositories;
 
 public interface IUserRepository
 {

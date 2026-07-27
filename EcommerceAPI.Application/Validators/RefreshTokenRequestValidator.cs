@@ -1,4 +1,4 @@
-using EcommerceAPI.Application.DTOs.Requests;
+using EcommerceAPI.Application.DTOs.Auth;
 using FluentValidation;
 
 namespace EcommerceAPI.Application.Validators;

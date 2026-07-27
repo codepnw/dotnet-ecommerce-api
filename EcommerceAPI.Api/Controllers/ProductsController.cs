@@ -1,4 +1,5 @@
 ﻿using EcommerceAPI.Application.DTOs.Products;
+using EcommerceAPI.Application.Interfaces.Services;
 using EcommerceAPI.Application.Services;
 using EcommerceAPI.Domain.Shared;
 using Microsoft.AspNetCore.Mvc;
@@ -8,7 +9,7 @@ namespace EcommerceAPI.Controllers;
 [ApiController]
 [Route("api/[controller]")]
 // [Authorize]
-public class ProductsController(ProductService productService) : ControllerBase
+public class ProductsController(IProductService productService) : ControllerBase
 {
     [HttpPost]
     public async Task<IActionResult> CreateProduct([FromBody] CreateProductRequest request)

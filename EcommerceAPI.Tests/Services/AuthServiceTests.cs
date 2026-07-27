@@ -1,7 +1,6 @@
 using EcommerceAPI.Application.Commons;
 using EcommerceAPI.Application.Commons.Constrants;
-using EcommerceAPI.Application.DTOs.Requests;
-using EcommerceAPI.Application.DTOs.Responses;
+using EcommerceAPI.Application.DTOs.Auth;
 using EcommerceAPI.Application.Services;
 using EcommerceAPI.Domain.Entities;
 using EcommerceAPI.Domain.Shared;
