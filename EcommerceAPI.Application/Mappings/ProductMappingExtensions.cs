@@ -1,3 +1,4 @@
+using System.Security.Cryptography.X509Certificates;
 using EcommerceAPI.Application.DTOs.Products;
 using EcommerceAPI.Domain.Common.Extensions;
 using EcommerceAPI.Domain.Common.ValueObject;
@@ -14,6 +15,7 @@ public static class ProductMappingExtensions
             Id = product.Id,
             Name = product.Name,
             Sku = product.Sku,
+            Slug = product.Slug,
             PriceAmount = product.Price.Amount,
             PriceCurrency = product.Price.Currency,
             AvailableQuantity = product.Inventory.AvailableQuantity
@@ -40,7 +42,15 @@ public static class ProductMappingExtensions
 
     public static void ApplyTo(this UpdateProductRequest request, Product product)
     {
-        product.Name = !string.IsNullOrWhiteSpace(request.Name) ? request.Name : product.Name;
+        if (!string.IsNullOrWhiteSpace(request.Name))
+        {
+            product.Name = request.Name;
+            product.Slug = request.Name.GenerateSlug();
+        }
+        else
+        {
+            product.Name = product.Name;
+        }
         
         product.CategoryId = request.CategoryId != Guid.Empty ? request.CategoryId : product.CategoryId;
 

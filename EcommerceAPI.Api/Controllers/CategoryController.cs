@@ -7,7 +7,7 @@ using Microsoft.AspNetCore.Mvc;
 namespace EcommerceAPI.Controllers;
 
 [ApiController]
-[Route("api/[controller]")]
+[Route("api/categories")]
 public class CategoryController(ICategoryService service) : ControllerBase
 {
     [HttpPost]
@@ -24,7 +24,11 @@ public class CategoryController(ICategoryService service) : ControllerBase
             };
         }
 
-        return CreatedAtAction(nameof(GetCategoryById), new { id = result.Data!.Id });
+        return CreatedAtAction(
+            nameof(GetCategoryById),
+            new { id = result.Data!.Id },
+            result.Data
+        );
     }
 
     [HttpGet]
@@ -41,7 +45,7 @@ public class CategoryController(ICategoryService service) : ControllerBase
     public async Task<IActionResult> GetCategoryById(Guid id)
     {
         var result = await service.GetCategoryByIdAsync(id);
-        
+
         return result.IsSuccess
             ? Ok(result.Data)
             : BadRequest(result.ErrorMessage);
@@ -51,7 +55,7 @@ public class CategoryController(ICategoryService service) : ControllerBase
     public async Task<IActionResult> UpdateCategory(Guid id, [FromBody] UpdateCategoryRequest request)
     {
         var result = await service.UpdateCategoryAsync(id, request);
-        
+
         return result.IsSuccess
             ? Ok()
             : BadRequest(result.ErrorMessage);

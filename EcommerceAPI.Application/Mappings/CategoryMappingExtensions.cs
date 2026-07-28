@@ -12,6 +12,7 @@ public static class CategoryMappingExtensions
         {
             Id = category.Id,
             Name = category.Name,
+            Slug = category.Slug,
             Description = category.Description!
         };
     }
@@ -28,8 +29,15 @@ public static class CategoryMappingExtensions
 
     public static void ApplyTo(this UpdateCategoryRequest request, Category category)
     {
-        category.Name = !string.IsNullOrWhiteSpace(request.Name) 
-            ? request.Name : category.Name;
+        if (!string.IsNullOrWhiteSpace(request.Name))
+        {
+            category.Name = request.Name;
+            category.Slug = request.Name.GenerateSlug();
+        }
+        else
+        {
+            category.Name = category.Name;
+        }
 
         category.Description = !string.IsNullOrWhiteSpace(request.Description) 
             ? request.Description : category.Description;

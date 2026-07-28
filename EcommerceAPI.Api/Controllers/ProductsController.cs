@@ -7,7 +7,7 @@ using Microsoft.AspNetCore.Mvc;
 namespace EcommerceAPI.Controllers;
 
 [ApiController]
-[Route("api/[controller]")]
+[Route("api/products")]
 // [Authorize]
 public class ProductsController(IProductService productService) : ControllerBase
 {
@@ -25,7 +25,11 @@ public class ProductsController(IProductService productService) : ControllerBase
             };
         }
 
-        return CreatedAtAction(nameof(GetProductById), new { id = result.Data!.Id });
+        return CreatedAtAction(
+            nameof(GetProductById),
+            new { id = result.Data!.Id },
+            result.Data
+        );
     }
 
     [HttpGet]
@@ -50,17 +54,17 @@ public class ProductsController(IProductService productService) : ControllerBase
         return Ok(result.Data);
     }
 
-    [HttpPut("{id:guid}")]
+    [HttpPatch("{id:guid}")]
     public async Task<IActionResult> UpdateProduct(Guid id, [FromBody] UpdateProductRequest request)
     {
         var result = await productService.UpdateProductAsync(id, request);
-        
+
         if (!result.IsSuccess)
             return BadRequest(result.ErrorMessage);
 
         return Ok();
     }
-    
+
     [HttpDelete("{id:guid}")]
     public async Task<IActionResult> DeleteProduct(Guid id)
     {
