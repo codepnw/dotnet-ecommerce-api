@@ -1,5 +1,8 @@
+using EcommerceAPI.Application.Interfaces;
+using EcommerceAPI.Application.Interfaces.Repositories;
 using EcommerceAPI.Infrastructure.Persistence;
 using EcommerceAPI.Infrastructure.Persistence.Interceptors;
+using EcommerceAPI.Infrastructure.Repositories;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
@@ -11,11 +14,16 @@ public static class DependencyInjection
     public static IServiceCollection AddInfrastructure(this IServiceCollection service, IConfiguration configuration)
     {
         service.AddScoped<AuditableEntityInterceptor>();
+        
+        // Register Repositories
+        service.AddScoped<IUserRepository, UserRepository>();
+        service.AddScoped<IProductRepository, ProductRepository>();
+        service.AddScoped<ICategoryRepository, CategoryRepository>();
 
         service.AddDbContext<EcommerceDbContext>(options =>
         {
             options.UseSqlServer(
-                configuration.GetConnectionString("DefaultConnection"),
+                configuration.GetConnectionString("Default"),
                 sqlOptions =>
                 {
                     sqlOptions.MigrationsAssembly(typeof(EcommerceDbContext).Assembly.FullName);

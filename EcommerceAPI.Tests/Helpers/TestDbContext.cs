@@ -1,25 +1,26 @@
-using EcommerceAPI.Commons.Constrants;
-using EcommerceAPI.Data;
-using EcommerceAPI.Models;
+using EcommerceAPI.Application.Commons.Constrants;
+using EcommerceAPI.Infrastructure;
+using EcommerceAPI.Domain.Entities;
+using EcommerceAPI.Infrastructure.Persistence;
 using Microsoft.EntityFrameworkCore;
 
 namespace EcommerceAPI.Tests.Helpers;
 
 public static class TestDbContext
 {
-    public static AppDbContext Create()
+    public static EcommerceDbContext Create()
     {
-        var options = new DbContextOptionsBuilder<AppDbContext>()
+        var options = new DbContextOptionsBuilder<EcommerceDbContext>()
             .UseInMemoryDatabase(databaseName: Guid.NewGuid().ToString())
             .Options;
 
-        var context = new AppDbContext(options);
+        var context = new EcommerceDbContext(options, null);
         context.Database.EnsureCreated();
 
         return context;
     }
 
-    public static AppDbContext CreateWithUsers()
+    public static EcommerceDbContext CreateWithUsers()
     {
         var context = Create();
 

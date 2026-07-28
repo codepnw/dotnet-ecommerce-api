@@ -1,7 +1,8 @@
 ﻿using System.Security.Claims;
-using EcommerceAPI.Commons;
-using EcommerceAPI.DTOs.Requests;
-using EcommerceAPI.Services;
+using EcommerceAPI.Application.Commons;
+using EcommerceAPI.Application.DTOs.Auth;
+using EcommerceAPI.Application.Services;
+using EcommerceAPI.Domain.Shared;
 using FluentValidation;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;

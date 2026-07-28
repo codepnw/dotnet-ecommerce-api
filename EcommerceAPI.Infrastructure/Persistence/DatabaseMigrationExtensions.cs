@@ -1,9 +1,9 @@
-namespace EcommerceAPI.Infrastructure.Persistence;
-
-using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Serilog;
+using Microsoft.EntityFrameworkCore;
+
+namespace EcommerceAPI.Infrastructure.Persistence;
 
 public static class DatabaseMigrationExtensions
 {
@@ -11,17 +11,17 @@ public static class DatabaseMigrationExtensions
     {
         using var scope = host.Services.CreateScope();
         var services = scope.ServiceProvider;
-            
+
         try
         {
             Log.Information("Checking database connection...");
-                
+
             var context = services.GetRequiredService<EcommerceDbContext>();
-                
+
             if (await context.Database.CanConnectAsync())
             {
                 Log.Information("Database connection successfully");
-                    
+
                 Log.Information("Applying migrations...");
                 await context.Database.MigrateAsync();
                 Log.Information("Migrations applied successfully");

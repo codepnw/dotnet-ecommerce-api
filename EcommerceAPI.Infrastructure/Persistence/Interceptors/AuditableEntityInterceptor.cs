@@ -1,4 +1,3 @@
-using EcommerceAPI.Commons;
 using EcommerceAPI.Domain.Common;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Diagnostics;
