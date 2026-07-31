@@ -24,7 +24,9 @@ jobs:
         run: dotnet restore
 
       - name: Build
-        run: dotnet build --no-restore --configuration Release
+        run: dotnet build EcommerceAPI.Api/EcommerceAPI.Api.csproj --no-restore --configuration Release
+#     TODO: Uncomment this step after implementing Unit Tests   
+#        run: dotnet build --no-restore --configuration Release
 
 #     TODO: Uncomment this step after implementing Unit Tests
 #      - name: Run tests

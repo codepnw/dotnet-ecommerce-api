@@ -15,6 +15,9 @@ migrations-add:
 
 migrations-update:
 	dotnet ef --project EcommerceAPI.Infrastructure --startup-project EcommerceAPI.Api database update
+
+migrations-drop:
+	dotnet ef --project EcommerceAPI.Infrastructure --startup-project EcommerceAPI.Api database drop --force
 	
 gh-run:
 	gh workflow run ci.yml
