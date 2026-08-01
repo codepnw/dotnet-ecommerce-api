@@ -20,6 +20,7 @@ public static class DependencyInjection
         service.AddScoped<IProductRepository, ProductRepository>();
         service.AddScoped<ICategoryRepository, CategoryRepository>();
         service.AddScoped<ICartRepository, CartRepository>();
+        service.AddScoped<IOrderRepository, OrderRepository>();
 
         service.AddDbContext<EcommerceDbContext>(options =>
         {

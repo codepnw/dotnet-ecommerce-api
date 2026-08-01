@@ -7,15 +7,16 @@ public class ProductInventory : BaseAuditableEntity
 {
     public Guid ProductId { get; set; }
     public Product Product { get; set; } = null!;
-    
+
     // Real Quantity
     public int QuantityOnHand { get; set; }
+
     // Quantity Reserved (Pending Checkout) : Prevent Overselling
     public int QuantityReserved { get; set; }
-    
+
     // Calculate Product Quantity Available
     public int AvailableQuantity => QuantityOnHand - QuantityReserved;
-    
+
     // Method Business Logic (Encapsulation in DDD)
     public Result ReserveStock(int quantity)
     {
@@ -27,4 +28,18 @@ public class ProductInventory : BaseAuditableEntity
     }
 
     public void ReleaseStock(int quantity) => QuantityReserved -= quantity;
+
+    public void ConfirmSale(int quantity)
+    {
+        if (quantity <= 0)
+            throw new ArgumentException("Quantity to confirm must be greater than zero");
+
+        if (QuantityOnHand < quantity)
+            throw new InvalidOperationException(
+                $"Cannot confirm sale available stock is {QuantityOnHand}, but requested {quantity}."
+            );
+
+        QuantityOnHand -= quantity;
+        QuantityReserved -= quantity;
+    }
 }

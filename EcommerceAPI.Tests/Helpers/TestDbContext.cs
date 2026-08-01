@@ -27,7 +27,6 @@ public static class TestDbContext
         context.Users.AddRange(
             new User
             {
-                Id = Guid.NewGuid(),
                 Email = "admin@test.com",
                 PasswordHash = BCrypt.Net.BCrypt.HashPassword("AdminTest!"),
                 Role = UserRoles.Admin,
@@ -36,7 +35,6 @@ public static class TestDbContext
             },
             new User
             {
-                Id = Guid.NewGuid(),
                 Email = "user@test.com",
                 PasswordHash = BCrypt.Net.BCrypt.HashPassword("UserTest!"),
                 Role = UserRoles.User,
