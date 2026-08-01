@@ -1,4 +1,5 @@
 ﻿using System.Security.Claims;
+using Asp.Versioning;
 using EcommerceAPI.Application.Commons;
 using EcommerceAPI.Application.DTOs.Auth;
 using EcommerceAPI.Application.Services;
@@ -10,8 +11,9 @@ using Microsoft.AspNetCore.RateLimiting;
 
 namespace EcommerceAPI.Controllers;
 
-[Route("api/[controller]")]
 [ApiController]
+[ApiVersion("1.0")]
+[Route("api/v{version:apiVersion}/auth")]
 public class AuthController(
     IAuthService service,
     IValidator<RegisterRequest> registerValidator,

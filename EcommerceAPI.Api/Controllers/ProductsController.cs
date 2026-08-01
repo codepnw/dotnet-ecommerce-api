@@ -1,4 +1,5 @@
-﻿using EcommerceAPI.Application.DTOs.Products;
+﻿using Asp.Versioning;
+using EcommerceAPI.Application.DTOs.Products;
 using EcommerceAPI.Application.Interfaces.Services;
 using EcommerceAPI.Application.Services;
 using EcommerceAPI.Domain.Shared;
@@ -7,7 +8,9 @@ using Microsoft.AspNetCore.Mvc;
 namespace EcommerceAPI.Controllers;
 
 [ApiController]
-[Route("api/products")]
+[ApiVersion("1.0")]
+[Route("api/v{version:apiVersion}/products")]
+// TODO: Uncomment later
 // [Authorize]
 public class ProductsController(IProductService productService) : ControllerBase
 {

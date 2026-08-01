@@ -1,3 +1,4 @@
+using Asp.Versioning;
 using EcommerceAPI.Application.DTOs.Carts;
 using EcommerceAPI.Application.Interfaces.Services;
 using Microsoft.AspNetCore.Authorization;
@@ -6,7 +7,8 @@ using Microsoft.AspNetCore.Mvc;
 namespace EcommerceAPI.Controllers;
 
 [ApiController]
-[Route("api/cart")]
+[ApiVersion("1.0")]
+[Route("api/v{version:apiVersion}/cart")]
 // TODO: Uncomment later
 // [Authorize]
 public class CartController(ICartService service) : ControllerBase

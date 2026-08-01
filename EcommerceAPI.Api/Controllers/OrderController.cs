@@ -1,3 +1,4 @@
+using Asp.Versioning;
 using EcommerceAPI.Application.Interfaces.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -5,7 +6,8 @@ using Microsoft.AspNetCore.Mvc;
 namespace EcommerceAPI.Controllers;
 
 [ApiController]
-[Route("api/order")]
+[ApiVersion("1.0")]
+[Route("api/v{version:apiVersion}/order")]
 // TODO: Uncomment later
 // [Authorize]
 public class OrderController(IOrderService service) : ControllerBase

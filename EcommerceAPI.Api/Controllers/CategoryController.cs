@@ -1,4 +1,5 @@
 using System.Diagnostics;
+using Asp.Versioning;
 using EcommerceAPI.Application.DTOs.Categories;
 using EcommerceAPI.Application.Interfaces.Services;
 using EcommerceAPI.Domain.Shared;
@@ -7,7 +8,9 @@ using Microsoft.AspNetCore.Mvc;
 namespace EcommerceAPI.Controllers;
 
 [ApiController]
-[Route("api/categories")]
+[ApiVersion("1.0")]
+[Route("api/v{version:apiVersion}/categories")]
+// TODO: Uncomment later
 public class CategoryController(ICategoryService service) : ControllerBase
 {
     [HttpPost]
