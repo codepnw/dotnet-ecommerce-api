@@ -24,7 +24,6 @@ public class Cart : BaseEntity
         {
             Items.Add(new CartItem
             {
-                CartId = Id,
                 ProductId = productId,
                 Quantity = quantity
             });

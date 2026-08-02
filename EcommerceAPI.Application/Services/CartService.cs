@@ -6,7 +6,10 @@ using EcommerceAPI.Domain.Shared;
 
 namespace EcommerceAPI.Application.Services;
 
-public class CartService(ICartRepository cartRepository, IProductRepository productRepository) : ICartService
+public class CartService(
+    ICartRepository cartRepository,
+    IProductRepository productRepository
+) : ICartService
 {
     public async Task<Result<CartResponse>> GetCartAsync(Guid userId)
     {
@@ -47,8 +50,6 @@ public class CartService(ICartRepository cartRepository, IProductRepository prod
 
     public async Task<Result> AddItemAsync(Guid userId, AddToCartRequest request)
     {
-        // TODO: Still has Bug
-        
         // Get Cart
         var cart = await cartRepository.GetCartByUserIdAsync(userId);
 
@@ -58,20 +59,10 @@ public class CartService(ICartRepository cartRepository, IProductRepository prod
             await cartRepository.AddAsync(cart);
         }
 
-        var cartItems = cart.Items.FirstOrDefault(i => i.ProductId == request.ProductId);
+        var product = await productRepository.GetByIdAsync(request.ProductId, true);
 
-        Product? product;
-
-        if (cartItems?.Product?.Inventory != null)
-        {
-            product = cartItems.Product;
-        }
-        else
-        {
-            product = await productRepository.GetByIdAsync(request.ProductId, true);
-            if (product?.Inventory is null)
-                return Result.Failure("Product or inventory not found", ErrorCode.NotFound);
-        }
+        if (product?.Inventory is null)
+            return Result.Failure("Product or inventory not found", ErrorCode.NotFound);
 
         // Check Stock Available
         if (product.Inventory.AvailableQuantity < request.Quantity)
@@ -83,21 +74,13 @@ public class CartService(ICartRepository cartRepository, IProductRepository prod
         if (!reserveResult.IsSuccess)
             return Result.Failure(reserveResult.ErrorMessage!, reserveResult.ErrorCode);
 
-        Console.WriteLine($"Reserver Product: {reserveResult.IsSuccess}, {request.Quantity}");
-
         // Add to Cart
         cart.AddItem(request.ProductId, request.Quantity);
 
-        try
-        {
-            // Save to Database
-            await cartRepository.SaveChangeAsync();
-            return Result.Success();
-        }
-        catch (Exception e)
-        {
-            return Result.Failure($"Exception: {e.Message}", ErrorCode.Conflict);
-        }
+        // Save to Database
+        await cartRepository.SaveChangeAsync();
+        
+        return Result.Success();
     }
 
     public async Task<Result> UpdateItemQuantityAsync(Guid userId, UpdateCartRequest request)
