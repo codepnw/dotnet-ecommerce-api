@@ -1,7 +1,9 @@
 ﻿using System.Security.Claims;
-using EcommerceAPI.Commons;
-using EcommerceAPI.DTOs.Requests;
-using EcommerceAPI.Services;
+using Asp.Versioning;
+using EcommerceAPI.Application.Commons;
+using EcommerceAPI.Application.DTOs.Auth;
+using EcommerceAPI.Application.Services;
+using EcommerceAPI.Domain.Shared;
 using FluentValidation;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -9,8 +11,9 @@ using Microsoft.AspNetCore.RateLimiting;
 
 namespace EcommerceAPI.Controllers;
 
-[Route("api/[controller]")]
 [ApiController]
+[ApiVersion("1.0")]
+[Route("api/v{version:apiVersion}/auth")]
 public class AuthController(
     IAuthService service,
     IValidator<RegisterRequest> registerValidator,

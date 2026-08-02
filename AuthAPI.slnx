@@ -1,4 +1,0 @@
-<Solution>
-  <Project Path="EcommerceAPI.Tests/EcommerceAPI.Tests.csproj" />
-  <Project Path="EcommerceAPI/EcommerceAPI.csproj" />
-</Solution>

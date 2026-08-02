@@ -9,7 +9,7 @@ public class Product : BaseAuditableEntity
     public required string Slug { get; set; }
     public string? Description { get; set; }
     public required string Sku { get; set; }
-    public Money Price { get; private set; } = Money.Zero();
+    public Money Price { get; set; } = Money.Zero();
     
     public Guid CategoryId { get; set; }
     public Category Category { get; set; } = null!;

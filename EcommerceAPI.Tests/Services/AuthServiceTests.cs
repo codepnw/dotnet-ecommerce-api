@@ -1,9 +1,9 @@
-using EcommerceAPI.Commons;
-using EcommerceAPI.Commons.Constrants;
-using EcommerceAPI.DTOs.Requests;
-using EcommerceAPI.DTOs.Responses;
-using EcommerceAPI.Models;
-using EcommerceAPI.Services;
+using EcommerceAPI.Application.Commons;
+using EcommerceAPI.Application.Commons.Constrants;
+using EcommerceAPI.Application.DTOs.Auth;
+using EcommerceAPI.Application.Services;
+using EcommerceAPI.Domain.Entities;
+using EcommerceAPI.Domain.Shared;
 using EcommerceAPI.Tests.Helpers;
 using FluentAssertions;
 using Microsoft.Extensions.Configuration;
@@ -23,7 +23,7 @@ public class AuthServiceTests
         var configData = new Dictionary<string, string?>
         {
             ["Jwt:Key"] = "Example-JWT-Key-32CharactersLong",
-            ["Jwt:Issuer"] = "EcommerceAPI",
+            ["Jwt:Issuer"] = "EcommerceAPI.Api",
             ["Jwt:Audience"] = "AuthAPIClients",
             ["Jwt:AccessTokenExpiryMinutes"] = "15",
             ["Jwt:RefreshTokenExpiryDays"] = "7",
@@ -79,7 +79,7 @@ public class AuthServiceTests
         var handler = new System.IdentityModel.Tokens.Jwt.JwtSecurityTokenHandler();
         var jwtToken = handler.ReadJwtToken(result.Data!.AccessToken);
 
-        jwtToken.Issuer.Should().Be("EcommerceAPI");
+        jwtToken.Issuer.Should().Be("EcommerceAPI.Api");
         jwtToken.Audiences.Should().Contain("AuthAPIClients");
     }
 

@@ -8,13 +8,16 @@ docker-up-build:
 
 # build docker image
 docker-build:
-	docker build -t dotnet-auth-api .
+	docker build -t dotnet-ecom-api .
 
 migrations-add:
-	dotnet ef migrations --project EcommerceAPI add $(NAME) --output-dir ./Data/Migrations
+	dotnet ef migrations add $(name) --project EcommerceAPI.Infrastructure --startup-project EcommerceAPI.Api --output-dir Persistence/Migrations
 
 migrations-update:
-	dotnet ef --project EcommerceAPI database update
+	dotnet ef --project EcommerceAPI.Infrastructure --startup-project EcommerceAPI.Api database update
+
+migrations-drop:
+	dotnet ef --project EcommerceAPI.Infrastructure --startup-project EcommerceAPI.Api database drop --force
 	
 gh-run:
 	gh workflow run ci.yml

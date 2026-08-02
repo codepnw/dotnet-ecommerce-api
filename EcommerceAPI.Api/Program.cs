@@ -1,14 +1,14 @@
-using AuthAPI.Data;
-using Microsoft.AspNetCore.Authentication.JwtBearer;
-using Microsoft.EntityFrameworkCore;
-using Microsoft.IdentityModel.Tokens;
 using System.Text;
 using System.Threading.RateLimiting;
-using EcommerceAPI.Data;
+using Asp.Versioning;
+using EcommerceAPI.Application;
+using EcommerceAPI.Application.Services;
 using EcommerceAPI.Infrastructure;
+using EcommerceAPI.Infrastructure.Persistence;
 using EcommerceAPI.Middleware;
-using EcommerceAPI.Services;
 using FluentValidation;
+using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.IdentityModel.Tokens;
 using Serilog;
 
 Log.Logger = new LoggerConfiguration()
@@ -17,7 +17,7 @@ Log.Logger = new LoggerConfiguration()
 
 try
 {
-    Log.Information("Starting EcommerceAPI");
+    Log.Information("Starting EcommerceAPI.Api");
 
     var builder = WebApplication.CreateBuilder(args);
 
@@ -28,20 +28,28 @@ try
         .Enrich.FromLogContext()
         .WriteTo.Console()
     );
-
-    // Connect Database SQL Server
-    builder.Services.AddDbContext<AppDbContext>(options => options.UseSqlServer(
-        builder.Configuration.GetConnectionString("Default"),
-        x => x.MigrationsAssembly("EcommerceAPI"))
-    );
-
-    // Dependency Injection
-    builder.Services.AddScoped<IAuthService, AuthService>();
-    builder.Services.AddScoped<IOAuthService, OAuthService>();
     
-    // Add Infrastructure
+    // Add Infrastructure Layer
     builder.Services.AddInfrastructure(builder.Configuration);
+    
+    // Add Application Layer
+    builder.Services.AddApplication();
+    
     builder.Services.AddHttpContextAccessor();
+
+    // API Versioning
+    builder.Services.AddApiVersioning(options =>
+        {
+            options.DefaultApiVersion = new ApiVersion(1, 0);
+            options.AssumeDefaultVersionWhenUnspecified = true;
+            options.ReportApiVersions = true;
+            options.ApiVersionReader = new UrlSegmentApiVersionReader();
+        })
+        .AddApiExplorer(options =>
+        {
+            options.GroupNameFormat = "'v'VVV";
+            options.SubstituteApiVersionInUrl = true;
+        });
 
     // Add JWT Authentication
     builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
@@ -116,33 +124,6 @@ try
 
     var app = builder.Build();
 
-    // Check Database Connection
-    using (var scope = app.Services.CreateScope())
-    {
-        var services = scope.ServiceProvider;
-        try
-        {
-            Log.Information("Checking database connection...");
-            var context = services.GetRequiredService<AppDbContext>();
-
-            if (context.Database.CanConnect())
-            {
-                Log.Information("Database connection successfully");
-
-                context.Database.Migrate();
-            }
-            else
-            {
-                Log.Warning("Cannot connect to the database!");
-            }
-        }
-        catch (Exception e)
-        {
-            Log.Fatal(e, "error connection or migrations the database");
-            throw;
-        }
-    }
-
     // Configure the HTTP request pipeline.
     if (app.Environment.IsDevelopment())
     {
@@ -167,7 +148,20 @@ try
 
     app.MapControllers();
 
-    app.Run();
+    try
+    {
+        Log.Information("Starting database migration...");
+        await app.MigrateDatabaseAsync();
+        Log.Information("Database migration completed");
+    }
+    catch (Exception e)
+    {
+        Log.Fatal(e, "Application startup failed: Database migration error");
+        return;
+    }
+
+    Log.Information("EcommerceAPI is running...");
+    await app.RunAsync();
 }
 catch (Exception e) when (e.GetType().Name == "HostAbortedException")
 {
