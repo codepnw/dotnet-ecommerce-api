@@ -21,6 +21,11 @@ public class CartRepository(EcommerceDbContext context) : ICartRepository
         await context.AddAsync(cart);
     }
 
+    public async Task AddCartItemAsync(CartItem item)
+    {
+        await context.CartItems.AddAsync(item);
+    }
+
     public async Task SaveChangeAsync()
     {
         /*

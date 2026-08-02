@@ -74,8 +74,13 @@ public class CartService(
         if (!reserveResult.IsSuccess)
             return Result.Failure(reserveResult.ErrorMessage!, reserveResult.ErrorCode);
 
-        // Add to Cart
-        cart.AddItem(request.ProductId, request.Quantity);
+        // Add new item to cart
+        var newItem = cart.AddItem(request.ProductId, request.Quantity);
+
+        if (newItem is not null)
+        {
+            await cartRepository.AddCartItemAsync(newItem);
+        }
 
         // Save to Database
         await cartRepository.SaveChangeAsync();

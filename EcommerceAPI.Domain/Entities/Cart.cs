@@ -11,7 +11,7 @@ public class Cart : BaseEntity
     
     // ----------- Business Logic ------------
 
-    public void AddItem(Guid productId, int quantity)
+    public CartItem? AddItem(Guid productId, int quantity)
     {
         // Check item in cart
         var existingItem = Items.FirstOrDefault(i => i.ProductId == productId);
@@ -19,14 +19,19 @@ public class Cart : BaseEntity
         if (existingItem is not null)
         {
             existingItem.Quantity += quantity;
+            return null;
         }
         else
         {
-            Items.Add(new CartItem
+            var newItem = new CartItem
             {
+                CartId = Id,
                 ProductId = productId,
                 Quantity = quantity
-            });
+            }; 
+            Items.Add(newItem);
+            
+            return newItem;
         }
     }
 
