@@ -9,16 +9,13 @@ namespace EcommerceAPI.Controllers;
 [ApiController]
 [ApiVersion("1.0")]
 [Route("api/v{version:apiVersion}/cart")]
-// TODO: Uncomment later
-// [Authorize]
+[Authorize]
 public class CartController(ICartService service) : ControllerBase
 {
     [HttpGet]
     public async Task<IActionResult> GetCart()
     {
-        var userId = MockUserId();
-
-        var result = await service.GetCartAsync(userId);
+        var result = await service.GetCartAsync();
 
         if (!result.IsSuccess)
             return BadRequest(result.ErrorMessage);
@@ -29,9 +26,7 @@ public class CartController(ICartService service) : ControllerBase
     [HttpPost("add")]
     public async Task<IActionResult> AddToCart(AddToCartRequest request)
     {
-        var userId = MockUserId();
-
-        var result = await service.AddItemAsync(userId, request);
+        var result = await service.AddItemAsync(request);
 
         if (!result.IsSuccess)
             return BadRequest(result.ErrorMessage);
@@ -42,9 +37,7 @@ public class CartController(ICartService service) : ControllerBase
     [HttpPut("update")]
     public async Task<IActionResult> UpdateQuantity(UpdateCartRequest request)
     {
-        var userId = MockUserId();
-
-        var result = await service.UpdateItemQuantityAsync(userId, request);
+        var result = await service.UpdateItemQuantityAsync(request);
 
         if (!result.IsSuccess)
             return BadRequest(result.ErrorMessage);
@@ -55,9 +48,7 @@ public class CartController(ICartService service) : ControllerBase
     [HttpPost("remove")]
     public async Task<IActionResult> RemoveItem(RemoveCartItemRequest request)
     {
-        var userId = MockUserId();
-
-        var result = await service.RemoveItemAsync(userId, request);
+        var result = await service.RemoveItemAsync(request);
         
         if (!result.IsSuccess)
             return BadRequest(result.ErrorMessage);
@@ -68,18 +59,11 @@ public class CartController(ICartService service) : ControllerBase
     [HttpGet("clear")]
     public async Task<IActionResult> ClearCart()
     {
-        var userId = MockUserId();
-
-        var result = await service.ClearCartAsync(userId);
+        var result = await service.ClearCartAsync();
         
         if (!result.IsSuccess)
             return BadRequest(result.ErrorMessage);
 
         return Ok();
-    }
-
-    private static Guid MockUserId()
-    {
-        return Guid.Parse("ae85f895-c8d4-4507-bf57-529dd966a1a9");
     }
 }

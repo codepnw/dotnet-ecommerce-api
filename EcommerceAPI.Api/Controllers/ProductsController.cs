@@ -1,8 +1,10 @@
 ﻿using Asp.Versioning;
+using EcommerceAPI.Application.Commons.Constrants;
 using EcommerceAPI.Application.DTOs.Products;
 using EcommerceAPI.Application.Interfaces.Services;
 using EcommerceAPI.Application.Services;
 using EcommerceAPI.Domain.Shared;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
 namespace EcommerceAPI.Controllers;
@@ -10,8 +12,7 @@ namespace EcommerceAPI.Controllers;
 [ApiController]
 [ApiVersion("1.0")]
 [Route("api/v{version:apiVersion}/products")]
-// TODO: Uncomment later
-// [Authorize]
+[Authorize(Roles = UserRoles.Admin)]
 public class ProductsController(IProductService productService) : ControllerBase
 {
     [HttpPost]
@@ -36,6 +37,7 @@ public class ProductsController(IProductService productService) : ControllerBase
     }
 
     [HttpGet]
+    [AllowAnonymous]
     public async Task<IActionResult> GetAllProducts()
     {
         var result = await productService.GetAllProductsAsync();

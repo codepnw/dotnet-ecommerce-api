@@ -1,5 +1,6 @@
 using EcommerceAPI.Application.DTOs.Carts;
 using EcommerceAPI.Application.Interfaces.Repositories;
+using EcommerceAPI.Application.Interfaces.Services;
 using EcommerceAPI.Application.Services;
 using EcommerceAPI.Domain.Entities;
 using EcommerceAPI.Domain.Shared;
@@ -12,19 +13,21 @@ public class CartServiceTests
 {
     private readonly Mock<ICartRepository> _cartRepo = new Mock<ICartRepository>();
     private readonly Mock<IProductRepository> _productRepo = new Mock<IProductRepository>();
+    private readonly Mock<ICurrentUserService> _currentUser = new Mock<ICurrentUserService>();
     private readonly CartService _service;
+    private readonly Guid _userId;
 
     public CartServiceTests()
     {
-        _service = new CartService(_cartRepo.Object, _productRepo.Object);
+        _service = new CartService(_cartRepo.Object, _productRepo.Object, _currentUser.Object);
+        _userId = Guid.NewGuid();
     }
 
     [Fact]
     public async Task AddItem_Success()
     {
         // Arrange
-        var userId = Guid.NewGuid();
-        _cartRepo.Setup(x => x.GetCartByUserIdAsync(userId)).ReturnsAsync((Cart?)null);
+        _cartRepo.Setup(x => x.GetCartByUserIdAsync(_userId)).ReturnsAsync((Cart?)null);
 
         var product = new Product
         {
@@ -42,7 +45,6 @@ public class CartServiceTests
 
         // Act
         var result = await _service.AddItemAsync(
-            userId,
             new AddToCartRequest { ProductId = productId, Quantity = 2 }
         );
 
@@ -77,7 +79,6 @@ public class CartServiceTests
 
         // Act
         var result = await _service.AddItemAsync(
-            userId,
             new AddToCartRequest { ProductId = productId, Quantity = 20 }
         );
 
@@ -117,11 +118,12 @@ public class CartServiceTests
         _cartRepo.Setup(x => x.GetCartByUserIdAsync(userId)).ReturnsAsync(cart);
 
         // Act
-        var result = await _service.UpdateItemQuantityAsync(userId, new UpdateCartRequest
-        {
-            ProductId = productId,
-            NewQuantity = 5
-        });
+        var result = await _service.UpdateItemQuantityAsync(
+            new UpdateCartRequest
+            {
+                ProductId = productId,
+                NewQuantity = 5
+            });
 
         // Asserts
         result.IsSuccess.Should().BeTrue();
@@ -162,15 +164,16 @@ public class CartServiceTests
                 new() { ProductId = productId, Quantity = 10 }
             }
         };
-        var userId = Guid.NewGuid();
-        _cartRepo.Setup(x => x.GetCartByUserIdAsync(userId)).ReturnsAsync(cart);
+        
+        _cartRepo.Setup(x => x.GetCartByUserIdAsync(_userId)).ReturnsAsync(cart);
 
         // Act
-        var result = await _service.UpdateItemQuantityAsync(userId, new UpdateCartRequest
-        {
-            ProductId = productId,
-            NewQuantity = 2
-        });
+        var result = await _service.UpdateItemQuantityAsync(
+            new UpdateCartRequest
+            {
+                ProductId = productId,
+                NewQuantity = 2
+            });
 
         // Asserts
         result.IsSuccess.Should().BeTrue();
@@ -203,12 +206,11 @@ public class CartServiceTests
         };
         var productId = product.Id;
 
-        var userId = Guid.NewGuid();
         var request = new RemoveCartItemRequest { ProductId = productId };
 
         var cart = new Cart
         {
-            UserId = userId,
+            UserId = _userId,
             Items = new List<CartItem>
             {
                 new() { ProductId = productId, Quantity = 5 }
@@ -217,11 +219,11 @@ public class CartServiceTests
 
         _productRepo.Setup(x => x.GetByIdAsync(productId, It.IsAny<bool>()))
             .ReturnsAsync(product);
-        _cartRepo.Setup(x => x.GetCartByUserIdAsync(userId))
+        _cartRepo.Setup(x => x.GetCartByUserIdAsync(_userId))
             .ReturnsAsync(cart);
 
         // Act
-        var result = await _service.RemoveItemAsync(userId, request);
+        var result = await _service.RemoveItemAsync(request);
 
         // Assert
         result.IsSuccess.Should().BeTrue();
@@ -238,8 +240,6 @@ public class CartServiceTests
     [Fact]
     public async Task ClearCart_Success()
     {
-        var userId = Guid.NewGuid();
-
         var product1 = new Product
         {
             Name = "Test Product 1",
@@ -261,7 +261,7 @@ public class CartServiceTests
         // Cart
         var cart = new Cart
         {
-            UserId = userId,
+            UserId = _userId,
             Items = new List<CartItem>
             {
                 new() { ProductId = productId1, Quantity = 3, Product = product1 },
@@ -269,11 +269,11 @@ public class CartServiceTests
             }
         };
 
-        _cartRepo.Setup(x => x.GetCartByUserIdAsync(userId))
+        _cartRepo.Setup(x => x.GetCartByUserIdAsync(_userId))
             .ReturnsAsync(cart);
 
         // Act
-        var result = await _service.ClearCartAsync(userId);
+        var result = await _service.ClearCartAsync();
 
         // Assert (State)
         result.IsSuccess.Should().BeTrue();

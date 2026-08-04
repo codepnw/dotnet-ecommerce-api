@@ -1,7 +1,7 @@
 ﻿using System.Security.Claims;
 using Asp.Versioning;
-using EcommerceAPI.Application.Commons;
 using EcommerceAPI.Application.DTOs.Auth;
+using EcommerceAPI.Application.Interfaces.Services;
 using EcommerceAPI.Application.Services;
 using EcommerceAPI.Domain.Shared;
 using FluentValidation;
@@ -40,7 +40,7 @@ public class AuthController(
     }
 
     [HttpPost("login")]
-    [EnableRateLimiting("LoginPolicy")]     // 5 requests per minutes
+    [EnableRateLimiting("LoginPolicy")] // 5 requests per minutes
     public async Task<IActionResult> Login([FromBody] LoginRequest request)
     {
         var validation = await loginValidator.ValidateAsync(request);
@@ -58,6 +58,7 @@ public class AuthController(
     }
 
     [HttpPost("refresh")]
+    [Authorize]
     public async Task<IActionResult> RefreshToken([FromBody] RefreshTokenRequest request)
     {
         var validation = await refreshValidator.ValidateAsync(request);
@@ -75,8 +76,8 @@ public class AuthController(
     }
 
     [HttpPost("google")]
-    [EnableRateLimiting("LoginPolicy")]     // 5 requests per minutes
-    public async Task<IActionResult> GoogleLogin([FromBody] GoogleLoginRequest request)
+    [EnableRateLimiting("LoginPolicy")] // 5 requests per minutes
+    public async Task<IActionResult> GoogleLogin(GoogleLoginRequest request)
     {
         var validation = await googleValidator.ValidateAsync(request);
         if (!validation.IsValid)
@@ -94,20 +95,13 @@ public class AuthController(
 
     [HttpGet("me")]
     [Authorize]
-    public IActionResult GetCurrentUser()
+    public IActionResult GetCurrentUser([FromServices] ICurrentUserService currentUser)
     {
-        var claims = User.Claims.Select(c => new
-        {
-            type = c.Type,
-            value = c.Value
-        });
-
         return Ok(new
         {
-            userId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value,
-            email = User.FindFirst(ClaimTypes.Email)?.Value,
-            role = User.FindFirst(ClaimTypes.Role)?.Value,
-            claims
+            userId = currentUser.UserId,
+            email = currentUser.Email,
+            role = currentUser.Role,
         });
     }
 

@@ -8,12 +8,13 @@ namespace EcommerceAPI.Application.Services;
 
 public class CartService(
     ICartRepository cartRepository,
-    IProductRepository productRepository
+    IProductRepository productRepository,
+    ICurrentUserService currentUserService
 ) : ICartService
 {
-    public async Task<Result<CartResponse>> GetCartAsync(Guid userId)
+    public async Task<Result<CartResponse>> GetCartAsync()
     {
-        var cart = await cartRepository.GetCartByUserIdAsync(userId);
+        var cart = await cartRepository.GetCartByUserIdAsync(currentUserService.UserId);
 
         if (cart is null)
             return Result<CartResponse>.Success(new CartResponse());
@@ -48,8 +49,10 @@ public class CartService(
         return Result<CartResponse>.Success(response);
     }
 
-    public async Task<Result> AddItemAsync(Guid userId, AddToCartRequest request)
+    public async Task<Result> AddItemAsync(AddToCartRequest request)
     {
+        var userId = currentUserService.UserId;
+        
         // Get Cart
         var cart = await cartRepository.GetCartByUserIdAsync(userId);
 
@@ -88,10 +91,12 @@ public class CartService(
         return Result.Success();
     }
 
-    public async Task<Result> UpdateItemQuantityAsync(Guid userId, UpdateCartRequest request)
+    public async Task<Result> UpdateItemQuantityAsync(UpdateCartRequest request)
     {
+        var userId = currentUserService.UserId;
+        
         if (request.NewQuantity <= 0)
-            return await RemoveItemAsync(userId, new RemoveCartItemRequest { ProductId = request.ProductId });
+            return await RemoveItemAsync(new RemoveCartItemRequest { ProductId = request.ProductId });
 
         var cart = await cartRepository.GetCartByUserIdAsync(userId);
         var product = await productRepository.GetByIdAsync(request.ProductId, true);
@@ -124,9 +129,9 @@ public class CartService(
         return Result.Success();
     }
 
-    public async Task<Result> RemoveItemAsync(Guid userId, RemoveCartItemRequest request)
+    public async Task<Result> RemoveItemAsync(RemoveCartItemRequest request)
     {
-        var cart = await cartRepository.GetCartByUserIdAsync(userId);
+        var cart = await cartRepository.GetCartByUserIdAsync(currentUserService.UserId);
         var product = await productRepository.GetByIdAsync(request.ProductId);
         var inventory = product?.Inventory;
 
@@ -144,9 +149,9 @@ public class CartService(
         return Result.Success();
     }
 
-    public async Task<Result> ClearCartAsync(Guid userId)
+    public async Task<Result> ClearCartAsync()
     {
-        var cart = await cartRepository.GetCartByUserIdAsync(userId);
+        var cart = await cartRepository.GetCartByUserIdAsync(currentUserService.UserId);
 
         if (cart is null || cart.Items.Count == 0)
             return Result.Success();
