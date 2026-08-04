@@ -2,7 +2,7 @@ name: CI Pipeline
 
 on:
   push:
-    branches: [ main, dev ]
+    branches: [ main, dev, tests ]
   pull_request:
     branches: [ main ]
   workflow_dispatch: 
@@ -24,14 +24,11 @@ jobs:
         run: dotnet restore
 
       - name: Build
-        run: dotnet build EcommerceAPI.Api/EcommerceAPI.Api.csproj --no-restore --configuration Release
-#     TODO: Uncomment this step after implementing Unit Tests   
-#        run: dotnet build --no-restore --configuration Release
+        run: dotnet build --no-restore --configuration Release
 
-#     TODO: Uncomment this step after implementing Unit Tests
-#      - name: Run tests
-#        run: dotnet test --no-build --configuration Release --verbosity normal
-#        env:
-#          Google__ClientId: ${{ secrets.GOOGLE_CLIENT_ID }}
-#          Google__ClientSecret: ${{ secrets.GOOGLE_CLIENT_SECRET }}
-#          Jwt__Key: ${{ secrets.JWT_SECRET_KEY }}
+      - name: Run tests
+        run: dotnet test --no-build --configuration Release --verbosity normal
+        env:
+          Google__ClientId: ${{ secrets.GOOGLE_CLIENT_ID }}
+          Google__ClientSecret: ${{ secrets.GOOGLE_CLIENT_SECRET }}
+          Jwt__Key: ${{ secrets.JWT_SECRET_KEY }}
