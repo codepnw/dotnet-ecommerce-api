@@ -9,10 +9,11 @@
 .secrets
 
 # log files
-AuthAPI/logs
+EcommerceAPI.Api/logs
 
 # Test coverage report
-AuthAPI.Tests/coveragereport/
+EcommerceAPI.Tests/TestResults/
+EcommerceAPI.Tests/CoverageReport/
 
 # User-specific files
 *.rsuser

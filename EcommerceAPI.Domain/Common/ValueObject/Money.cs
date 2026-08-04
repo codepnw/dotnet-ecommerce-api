@@ -2,7 +2,7 @@ namespace EcommerceAPI.Domain.Common.ValueObject;
 
 public class Money : IEquatable<Money>
 {
-    public decimal Amount { get; }
+    public decimal Amount { get; init; }
     public string Currency { get; }
 
     private Money(decimal amount, string currency)
