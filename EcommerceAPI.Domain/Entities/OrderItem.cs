@@ -2,7 +2,7 @@ using EcommerceAPI.Domain.Common;
 
 namespace EcommerceAPI.Domain.Entities;
 
-public class OrderItem : BaseEntity
+public class OrderItem : BaseAuditableEntity
 {
     public Guid OrderId { get; set; }
     public Order Order { get; set; } = null!;
