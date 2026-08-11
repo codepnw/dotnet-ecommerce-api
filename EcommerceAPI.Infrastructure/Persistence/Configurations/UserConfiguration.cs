@@ -24,10 +24,5 @@ public class UserConfiguration : IEntityTypeConfiguration<User>
         builder.HasIndex(u => u.GoogleId).IsUnique().HasFilter("[GoogleId] IS NOT NULL");
         builder.Property(u => u.PictureUrl).HasMaxLength(1000);
         builder.Property(u => u.DisplayName).HasMaxLength(100);
-
-        // 1 : M
-        builder.HasMany(u => u.Orders).WithOne()
-            .HasForeignKey("UserId")
-            .OnDelete(DeleteBehavior.Restrict);
     }
 }
