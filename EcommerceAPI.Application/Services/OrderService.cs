@@ -7,10 +7,16 @@ using EcommerceAPI.Domain.Shared;
 
 namespace EcommerceAPI.Application.Services;
 
-public class OrderService(IOrderRepository orderRepository, ICartRepository cartRepository) : IOrderService
+public class OrderService(
+    IOrderRepository orderRepository,
+    ICartRepository cartRepository,
+    ICurrentUserService currentUserService
+) : IOrderService
 {
-    public async Task<Result<OrderResponse>> CheckoutAsync(Guid userId)
+    public async Task<Result<OrderResponse>> CheckoutAsync()
     {
+        var userId = currentUserService.UserId;
+        
         var cart = await cartRepository.GetCartByUserIdAsync(userId);
 
         if (cart is null || cart.Items.Count == 0)

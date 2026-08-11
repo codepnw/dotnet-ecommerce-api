@@ -2,10 +2,12 @@ using System.Text;
 using System.Threading.RateLimiting;
 using Asp.Versioning;
 using EcommerceAPI.Application;
-using EcommerceAPI.Application.Services;
+using EcommerceAPI.Application.DTOs.Auth;
+using EcommerceAPI.Application.Interfaces.Services;
 using EcommerceAPI.Infrastructure;
 using EcommerceAPI.Infrastructure.Persistence;
 using EcommerceAPI.Middleware;
+using EcommerceAPI.Services;
 using FluentValidation;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.IdentityModel.Tokens;
@@ -28,14 +30,16 @@ try
         .Enrich.FromLogContext()
         .WriteTo.Console()
     );
-    
+
     // Add Infrastructure Layer
     builder.Services.AddInfrastructure(builder.Configuration);
-    
+
     // Add Application Layer
     builder.Services.AddApplication();
-    
+
     builder.Services.AddHttpContextAccessor();
+
+    builder.Services.AddScoped<ICurrentUserService, CurrentUserService>();
 
     // API Versioning
     builder.Services.AddApiVersioning(options =>
@@ -74,7 +78,7 @@ try
     builder.Services.AddOpenApi();
 
     // Add Request Validators
-    builder.Services.AddValidatorsFromAssemblyContaining<Program>();
+    builder.Services.AddValidatorsFromAssemblyContaining<RegisterRequest>();
 
     // =============================
     // ---  Rate Limit Config  ----
@@ -100,16 +104,16 @@ try
             factory: _ => new FixedWindowRateLimiterOptions
             {
                 Window = TimeSpan.FromMinutes(1),
-                PermitLimit = 5,            // 5 requests per minutes
+                PermitLimit = 5, // 5 requests per minutes
                 QueueProcessingOrder = QueueProcessingOrder.OldestFirst,
                 QueueLimit = 0
             }
         ));
-        
+
         // Custom Response
         options.OnRejected = async (context, cancell) =>
         {
-            context.HttpContext.Response.StatusCode = 429;  // Too many Requests
+            context.HttpContext.Response.StatusCode = 429; // Too many Requests
             context.HttpContext.Response.ContentType = "application/json";
 
             var errorResponse = new
@@ -137,11 +141,11 @@ try
 
     // Serilog Request Logging
     app.UseSerilogRequestLogging();
-    
+
     // Rate Limit
     app.UseRouting();
     app.UseRateLimiter();
-    
+
     // Authorization and Authentication
     app.UseAuthentication();
     app.UseAuthorization();

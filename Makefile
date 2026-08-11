@@ -1,3 +1,6 @@
+run:
+	dotnet run --project EcommerceAPI.Api
+
 # for update docker-compose and .env
 docker-up:
 	docker compose up -d

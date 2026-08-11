@@ -3,7 +3,7 @@ using EcommerceAPI.Domain.Enums;
 
 namespace EcommerceAPI.Domain.Entities;
 
-public class User : BaseEntity
+public class User : BaseAuditableEntity
 {
     public string Email { get; set; } = string.Empty;
     public string PasswordHash { get; set; } = string.Empty;
@@ -17,7 +17,6 @@ public class User : BaseEntity
     public string? DisplayName { get; set; }
 
     // Timestamps
-    public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
     public DateTime? LastLoginAt { get; set; }
 
     public ICollection<Order> Orders { get; set; } = [];

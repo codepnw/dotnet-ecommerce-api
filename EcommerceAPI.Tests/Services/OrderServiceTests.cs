@@ -1,4 +1,5 @@
 using EcommerceAPI.Application.Interfaces.Repositories;
+using EcommerceAPI.Application.Interfaces.Services;
 using EcommerceAPI.Application.Services;
 using EcommerceAPI.Domain.Common.ValueObject;
 using EcommerceAPI.Domain.Entities;
@@ -12,11 +13,12 @@ public class OrderServiceTests
 {
     private readonly Mock<IOrderRepository> _orderRepo = new Mock<IOrderRepository>();
     private readonly Mock<ICartRepository> _cartRepo = new Mock<ICartRepository>();
+    private readonly Mock<ICurrentUserService> _currentUser = new Mock<ICurrentUserService>();
     private readonly OrderService _serivce;
 
     public OrderServiceTests()
     {
-        _serivce = new OrderService(_orderRepo.Object, _cartRepo.Object);
+        _serivce = new OrderService(_orderRepo.Object, _cartRepo.Object, _currentUser.Object);
     }
 
     [Fact]
@@ -62,7 +64,7 @@ public class OrderServiceTests
         _orderRepo.Setup(x => x.SaveChangeAsync()).Returns(Task.CompletedTask);
 
         // Act
-        var result = await _serivce.CheckoutAsync(userId);
+        var result = await _serivce.CheckoutAsync();
 
         // Assert 1
         result.IsSuccess.Should().BeTrue();
@@ -87,7 +89,7 @@ public class OrderServiceTests
         _cartRepo.Setup(x => x.GetCartByUserIdAsync(userId)).ReturnsAsync((Cart?)null);
 
         // Act
-        var result = await _serivce.CheckoutAsync(userId);
+        var result = await _serivce.CheckoutAsync();
 
         // Assert
         result.IsSuccess.Should().BeFalse();
@@ -106,7 +108,7 @@ public class OrderServiceTests
         _cartRepo.Setup(x => x.GetCartByUserIdAsync(userId)).ReturnsAsync(emptyCart);
 
         // Act
-        var result = await _serivce.CheckoutAsync(userId);
+        var result = await _serivce.CheckoutAsync();
 
         // Assert
         result.IsSuccess.Should().BeFalse();
@@ -149,7 +151,7 @@ public class OrderServiceTests
         _cartRepo.Setup(x => x.GetCartByUserIdAsync(userId)).ReturnsAsync(cart);
 
         // Act
-        var result = await _serivce.CheckoutAsync(userId);
+        var result = await _serivce.CheckoutAsync();
 
         // Assert
         result.IsSuccess.Should().BeFalse();

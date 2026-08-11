@@ -2,7 +2,7 @@ using EcommerceAPI.Domain.Common;
 
 namespace EcommerceAPI.Domain.Entities;
 
-public class Cart : BaseEntity
+public class Cart : BaseAuditableEntity
 {
     public Guid UserId { get; set; }
     public User User { get; set; } = null!;

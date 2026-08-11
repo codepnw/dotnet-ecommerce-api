@@ -5,5 +5,5 @@ namespace EcommerceAPI.Application.Interfaces.Services;
 
 public interface IOrderService
 {
-    Task<Result<OrderResponse>> CheckoutAsync(Guid userId);
+    Task<Result<OrderResponse>> CheckoutAsync();
 }
