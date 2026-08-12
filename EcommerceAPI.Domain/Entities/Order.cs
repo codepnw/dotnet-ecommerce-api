@@ -3,7 +3,7 @@ using EcommerceAPI.Domain.Enums;
 
 namespace EcommerceAPI.Domain.Entities;
 
-public class Order : BaseEntity
+public class Order : BaseAuditableEntity
 {
     public Guid UserId { get; set; }
     public User User { get; set; } = null!;

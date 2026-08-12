@@ -5,9 +5,9 @@ namespace EcommerceAPI.Application.Interfaces.Services;
 
 public interface ICartService
 {
-    Task<Result<CartResponse>> GetCartAsync(Guid userId);
-    Task<Result> AddItemAsync(Guid userId, AddToCartRequest request);
-    Task<Result> UpdateItemQuantityAsync(Guid userId, UpdateCartRequest request);
-    Task<Result> RemoveItemAsync(Guid userId, RemoveCartItemRequest request);
-    Task<Result> ClearCartAsync(Guid userId);
+    Task<Result<CartResponse>> GetCartAsync();
+    Task<Result> AddItemAsync(AddToCartRequest request);
+    Task<Result> UpdateItemQuantityAsync(UpdateCartRequest request);
+    Task<Result> RemoveItemAsync(RemoveCartItemRequest request);
+    Task<Result> ClearCartAsync();
 }

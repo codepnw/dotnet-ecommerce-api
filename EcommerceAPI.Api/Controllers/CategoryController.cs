@@ -2,7 +2,9 @@ using System.Diagnostics;
 using Asp.Versioning;
 using EcommerceAPI.Application.DTOs.Categories;
 using EcommerceAPI.Application.Interfaces.Services;
+using EcommerceAPI.Domain.Enums;
 using EcommerceAPI.Domain.Shared;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
 namespace EcommerceAPI.Controllers;
@@ -10,7 +12,7 @@ namespace EcommerceAPI.Controllers;
 [ApiController]
 [ApiVersion("1.0")]
 [Route("api/v{version:apiVersion}/categories")]
-// TODO: Uncomment later
+[Authorize(Roles = UserRoles.Admin)]
 public class CategoryController(ICategoryService service) : ControllerBase
 {
     [HttpPost]
@@ -35,6 +37,7 @@ public class CategoryController(ICategoryService service) : ControllerBase
     }
 
     [HttpGet]
+    [AllowAnonymous]
     public async Task<IActionResult> GetAllCategories()
     {
         var result = await service.GetAllCategoriesAsync();

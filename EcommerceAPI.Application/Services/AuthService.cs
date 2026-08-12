@@ -7,6 +7,7 @@ using EcommerceAPI.Application.Commons.Constrants;
 using EcommerceAPI.Application.DTOs.Auth;
 using EcommerceAPI.Application.Interfaces;
 using EcommerceAPI.Application.Interfaces.Repositories;
+using EcommerceAPI.Application.Interfaces.Services;
 using EcommerceAPI.Domain.Entities;
 using EcommerceAPI.Domain.Shared;
 using Microsoft.Extensions.Configuration;
@@ -14,16 +15,6 @@ using Microsoft.Extensions.Logging;
 using Microsoft.IdentityModel.Tokens;
 
 namespace EcommerceAPI.Application.Services;
-
-public interface IAuthService
-{
-    Task<Result<TokenResponse>> Register(RegisterRequest request);
-    Task<Result<TokenResponse>> Login(LoginRequest request);
-    Task<Result<TokenResponse>> RefreshToken(RefreshTokenRequest request);
-
-    // OAuth
-    Task<Result<TokenResponse>> GoogleLogin(GoogleLoginRequest request);
-}
 
 public class AuthService(
     IUserRepository userRepository,
