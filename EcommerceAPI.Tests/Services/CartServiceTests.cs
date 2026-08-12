@@ -115,6 +115,7 @@ public class CartServiceTests
             }
         };
         var userId = Guid.NewGuid();
+        _currentUser.Setup(x => x.UserId).Returns(userId);
         _cartRepo.Setup(x => x.GetCartByUserIdAsync(userId)).ReturnsAsync(cart);
 
         // Act
@@ -165,6 +166,7 @@ public class CartServiceTests
             }
         };
         
+        _currentUser.Setup(x => x.UserId).Returns(_userId);
         _cartRepo.Setup(x => x.GetCartByUserIdAsync(_userId)).ReturnsAsync(cart);
 
         // Act
@@ -217,6 +219,7 @@ public class CartServiceTests
             }
         };
 
+        _currentUser.Setup(x => x.UserId).Returns(_userId);
         _productRepo.Setup(x => x.GetByIdAsync(productId, It.IsAny<bool>()))
             .ReturnsAsync(product);
         _cartRepo.Setup(x => x.GetCartByUserIdAsync(_userId))
@@ -269,6 +272,7 @@ public class CartServiceTests
             }
         };
 
+        _currentUser.Setup(x => x.UserId).Returns(_userId);
         _cartRepo.Setup(x => x.GetCartByUserIdAsync(_userId))
             .ReturnsAsync(cart);
 

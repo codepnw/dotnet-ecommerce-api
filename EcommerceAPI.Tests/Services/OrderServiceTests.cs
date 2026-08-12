@@ -59,6 +59,7 @@ public class OrderServiceTests
             }
         };
 
+        _currentUser.Setup(x => x.UserId).Returns(userId);
         _cartRepo.Setup(x => x.GetCartByUserIdAsync(userId)).ReturnsAsync(cart);
         _orderRepo.Setup(x => x.AddASync(It.IsAny<Order>())).Returns(Task.CompletedTask);
         _orderRepo.Setup(x => x.SaveChangeAsync()).Returns(Task.CompletedTask);
@@ -86,6 +87,7 @@ public class OrderServiceTests
     {
         // Arrange
         var userId = Guid.NewGuid();
+        _currentUser.Setup(x => x.UserId).Returns(userId);
         _cartRepo.Setup(x => x.GetCartByUserIdAsync(userId)).ReturnsAsync((Cart?)null);
 
         // Act
@@ -104,6 +106,7 @@ public class OrderServiceTests
     {
         // Arrange
         var userId = Guid.NewGuid();
+        _currentUser.Setup(x => x.UserId).Returns(userId);
         var emptyCart = new Cart { UserId = userId, Items = new List<CartItem>() };
         _cartRepo.Setup(x => x.GetCartByUserIdAsync(userId)).ReturnsAsync(emptyCart);
 
@@ -148,6 +151,7 @@ public class OrderServiceTests
             }
         };
 
+        _currentUser.Setup(x => x.UserId).Returns(userId);
         _cartRepo.Setup(x => x.GetCartByUserIdAsync(userId)).ReturnsAsync(cart);
 
         // Act
