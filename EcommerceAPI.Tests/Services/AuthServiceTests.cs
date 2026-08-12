@@ -1,10 +1,11 @@
-using EcommerceAPI.Application.Commons;
+using System.IdentityModel.Tokens.Jwt;
+using System.Security.Claims;
 using EcommerceAPI.Application.Commons.Constrants;
 using EcommerceAPI.Application.DTOs.Auth;
+using EcommerceAPI.Application.Interfaces.Repositories;
 using EcommerceAPI.Application.Services;
 using EcommerceAPI.Domain.Entities;
 using EcommerceAPI.Domain.Shared;
-using EcommerceAPI.Tests.Helpers;
 using FluentAssertions;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging.Abstractions;
@@ -14,317 +15,438 @@ namespace EcommerceAPI.Tests.Services;
 
 public class AuthServiceTests
 {
-    /* TODO:
-     
-    private readonly IConfigurationRoot _config;
-    private const string MockEmail = "admin@test.com";
-    private const string MockPassword = "AdminTest!";
+    private readonly Mock<IUserRepository> _userRepositoryMock = new();
+    private readonly Mock<IOAuthService> _oauthServiceMock = new();
+    private readonly IConfiguration _config;
+    private readonly AuthService _authService;
+
+    private const string MockEmail = "testuser@example.com";
+    private const string MockPassword = "TestPassword123!";
 
     public AuthServiceTests()
     {
         var configData = new Dictionary<string, string?>
         {
-            ["Jwt:Key"] = "Example-JWT-Key-32CharactersLong",
+            ["Jwt:Key"] = "SuperSecretKeyThatIsAtLeast32BytesLong!",
             ["Jwt:Issuer"] = "EcommerceAPI.Api",
             ["Jwt:Audience"] = "AuthAPIClients",
             ["Jwt:AccessTokenExpiryMinutes"] = "15",
-            ["Jwt:RefreshTokenExpiryDays"] = "7",
-            ["Google:ClientId"] = "test-client-id.apps.google.com",
-            ["Google:ClientSecret"] = "test-client-secret"
+            ["Jwt:RefreshTokenExpiryDays"] = "7"
         };
 
         _config = new ConfigurationBuilder()
             .AddInMemoryCollection(configData)
             .Build();
+
+        _authService = new AuthService(
+            _userRepositoryMock.Object,
+            _config,
+            NullLogger<AuthService>.Instance,
+            _oauthServiceMock.Object
+        );
     }
+
+    #region Register Tests
 
     [Fact]
     public async Task Register_Success()
     {
-        await using var context = TestDbContext.Create();
-        var logger = NullLogger<AuthService>.Instance;
-        var service = new AuthService(context, _config, logger, Mock.Of<IOAuthService>());
+        // Arrange
+        var request = new RegisterRequest { Email = MockEmail, Password = MockPassword };
+        _userRepositoryMock.Setup(x => x.ExistsByEmailAsync(request.Email)).ReturnsAsync(false);
+        _userRepositoryMock.Setup(x => x.CreateAsync(It.IsAny<User>()))
+            .ReturnsAsync((User user) => user);
 
-        var result = await service.Register(new RegisterRequest
-        {
-            Email = MockEmail,
-            Password = MockPassword
-        });
+        // Act
+        var result = await _authService.Register(request);
 
+        // Assert
         result.IsSuccess.Should().BeTrue();
         result.Data.Should().NotBeNull();
         result.Data!.AccessToken.Should().NotBeNullOrEmpty();
-        result.Data!.RefreshToken.Should().NotBeNullOrEmpty();
+        result.Data.RefreshToken.Should().NotBeNullOrEmpty();
 
-        var user = context.Users.FirstOrDefault(u => u.Email == MockEmail);
-        user.Should().NotBeNull();
-        user!.Role.Should().Be(UserRoles.User);
-        user.RefreshToken.Should().Be(result.Data.RefreshToken);
+        _userRepositoryMock.Verify(x => x.CreateAsync(It.Is<User>(u => u.Email == request.Email)), Times.Once);
+        _userRepositoryMock.Verify(x => x.UpdateAsync(It.Is<User>(u => u.Email == request.Email && u.RefreshToken == result.Data.RefreshToken)), Times.Once);
     }
 
-    // Private Method Generate Token
     [Fact]
-    public async Task Register_Success_GenerateJWT()
+    public async Task Register_Success_GenerateJwtWithCorrectClaims()
     {
-        await using var context = TestDbContext.Create();
-        var logger = NullLogger<AuthService>.Instance;
-        var service = new AuthService(context, _config, logger, Mock.Of<IOAuthService>());
+        // Arrange
+        var request = new RegisterRequest { Email = MockEmail, Password = MockPassword };
+        _userRepositoryMock.Setup(x => x.ExistsByEmailAsync(request.Email)).ReturnsAsync(false);
+        _userRepositoryMock.Setup(x => x.CreateAsync(It.IsAny<User>()))
+            .ReturnsAsync((User user) => user);
 
-        var result = await service.Register(new RegisterRequest
-        {
-            Email = "jwt@test.com",
-            Password = "PasswordTest"
-        });
+        // Act
+        var result = await _authService.Register(request);
 
+        // Assert
         result.IsSuccess.Should().BeTrue();
 
-        var handler = new System.IdentityModel.Tokens.Jwt.JwtSecurityTokenHandler();
+        var handler = new JwtSecurityTokenHandler();
         var jwtToken = handler.ReadJwtToken(result.Data!.AccessToken);
 
         jwtToken.Issuer.Should().Be("EcommerceAPI.Api");
         jwtToken.Audiences.Should().Contain("AuthAPIClients");
+
+        var claims = jwtToken.Claims.ToList();
+        claims.Should().Contain(c => c.Type == ClaimTypes.Email && c.Value == MockEmail);
+        claims.Should().Contain(c => c.Type == ClaimTypes.Role && c.Value == UserRoles.User);
     }
 
     [Fact]
     public async Task Register_Fail_DuplicateEmail()
     {
-        await using var context = TestDbContext.CreateWithUsers();
-        var logger = NullLogger<AuthService>.Instance;
-        var service = new AuthService(context, _config, logger, Mock.Of<IOAuthService>());
+        // Arrange
+        var request = new RegisterRequest { Email = MockEmail, Password = MockPassword };
+        _userRepositoryMock.Setup(x => x.ExistsByEmailAsync(request.Email)).ReturnsAsync(true);
 
-        var result = await service.Register(new RegisterRequest
-        {
-            Email = MockEmail,
-            Password = MockPassword
-        });
+        // Act
+        var result = await _authService.Register(request);
 
+        // Assert
         result.IsSuccess.Should().BeFalse();
         result.ErrorMessage.Should().Be("Email already exists");
         result.ErrorCode.Should().Be(ErrorCode.Conflict);
+
+        _userRepositoryMock.Verify(x => x.CreateAsync(It.IsAny<User>()), Times.Never);
+        _userRepositoryMock.Verify(x => x.UpdateAsync(It.IsAny<User>()), Times.Never);
     }
+
+    #endregion
+
+    #region Login Tests
 
     [Fact]
     public async Task Login_Success()
     {
-        await using var context = TestDbContext.CreateWithUsers();
-        var logger = NullLogger<AuthService>.Instance;
-        var service = new AuthService(context, _config, logger, Mock.Of<IOAuthService>());
-
-        var result = await service.Login(new LoginRequest
+        // Arrange
+        var request = new LoginRequest { Email = MockEmail, Password = MockPassword };
+        var existingUser = new User
         {
             Email = MockEmail,
-            Password = MockPassword
-        });
+            PasswordHash = BCrypt.Net.BCrypt.HashPassword(MockPassword),
+            Role = UserRoles.User
+        };
 
+        _userRepositoryMock.Setup(x => x.GetByEmailAsync(request.Email)).ReturnsAsync(existingUser);
+
+        // Act
+        var result = await _authService.Login(request);
+
+        // Assert
         result.IsSuccess.Should().BeTrue();
         result.Data.Should().NotBeNull();
-        result.Data.AccessToken.Should().NotBeNullOrEmpty();
+        result.Data!.AccessToken.Should().NotBeNullOrEmpty();
         result.Data.RefreshToken.Should().NotBeNullOrEmpty();
+
+        existingUser.LastLoginAt.Should().NotBeNull();
+        existingUser.RefreshToken.Should().Be(result.Data.RefreshToken);
+
+        _userRepositoryMock.Verify(x => x.UpdateAsync(existingUser), Times.Once);
     }
 
     [Fact]
     public async Task Login_Fail_InvalidEmail()
     {
-        await using var context = TestDbContext.CreateWithUsers();
-        var logger = NullLogger<AuthService>.Instance;
-        var service = new AuthService(context, _config, logger, Mock.Of<IOAuthService>());
+        // Arrange
+        var request = new LoginRequest { Email = "nonexistent@test.com", Password = MockPassword };
+        _userRepositoryMock.Setup(x => x.GetByEmailAsync(request.Email)).ReturnsAsync((User?)null);
 
-        var result = await service.Login(new LoginRequest
-        {
-            Email = "invalidm@test.com",
-            Password = MockPassword
-        });
+        // Act
+        var result = await _authService.Login(request);
 
+        // Assert
         result.IsSuccess.Should().BeFalse();
         result.ErrorMessage.Should().Be("Invalid email or password");
         result.ErrorCode.Should().Be(ErrorCode.BadRequest);
+
+        _userRepositoryMock.Verify(x => x.UpdateAsync(It.IsAny<User>()), Times.Never);
     }
 
     [Fact]
     public async Task Login_Fail_WrongPassword()
     {
-        await using var context = TestDbContext.CreateWithUsers();
-        var logger = NullLogger<AuthService>.Instance;
-        var server = new AuthService(context, _config, logger, Mock.Of<IOAuthService>());
-
-        var result = await server.Login(new LoginRequest
+        // Arrange
+        var request = new LoginRequest { Email = MockEmail, Password = "WrongPassword123!" };
+        var existingUser = new User
         {
             Email = MockEmail,
-            Password = "WrongPassword"
-        });
+            PasswordHash = BCrypt.Net.BCrypt.HashPassword(MockPassword),
+            Role = UserRoles.User
+        };
 
+        _userRepositoryMock.Setup(x => x.GetByEmailAsync(request.Email)).ReturnsAsync(existingUser);
+
+        // Act
+        var result = await _authService.Login(request);
+
+        // Assert
         result.IsSuccess.Should().BeFalse();
         result.ErrorMessage.Should().Be("Invalid email or password");
         result.ErrorCode.Should().Be(ErrorCode.BadRequest);
+
+        _userRepositoryMock.Verify(x => x.UpdateAsync(It.IsAny<User>()), Times.Never);
     }
+
+    #endregion
+
+    #region RefreshToken Tests
 
     [Fact]
     public async Task RefreshToken_Success()
     {
-        await using var context = TestDbContext.CreateWithUsers();
-        var logger = NullLogger<AuthService>.Instance;
-        var service = new AuthService(context, _config, logger, Mock.Of<IOAuthService>());
-
-        var oldRefreshToken = "valid-refresh-token";
-
-        var result = await service.RefreshToken(new RefreshTokenRequest
+        // Arrange
+        const string oldRefreshToken = "valid-refresh-token";
+        var request = new RefreshTokenRequest { RefreshToken = oldRefreshToken };
+        var existingUser = new User
         {
-            RefreshToken = oldRefreshToken
-        });
+            Email = MockEmail,
+            RefreshToken = oldRefreshToken,
+            RefreshTokenExpiry = DateTime.UtcNow.AddDays(7),
+            Role = UserRoles.User
+        };
+
+        _userRepositoryMock.Setup(x => x.GetByRefreshToken(oldRefreshToken)).ReturnsAsync(existingUser);
+
+        // Act
+        var result = await _authService.RefreshToken(request);
 
         // Assert
         result.IsSuccess.Should().BeTrue();
         result.Data.Should().NotBeNull();
-        result.Data.AccessToken.Should().NotBeNullOrEmpty();
+        result.Data!.AccessToken.Should().NotBeNullOrEmpty();
         result.Data.RefreshToken.Should().NotBeNullOrEmpty();
-
-        // NewRefreshToken != OldRefreshToken
         result.Data.RefreshToken.Should().NotBe(oldRefreshToken);
 
-        // Check Db
-        var user = context.Users.FirstOrDefault(u => u.Email == MockEmail);
-        user!.RefreshToken.Should().Be(result.Data.RefreshToken);
+        existingUser.RefreshToken.Should().Be(result.Data.RefreshToken);
+
+        _userRepositoryMock.Verify(x => x.UpdateAsync(existingUser), Times.Once);
     }
 
     [Fact]
     public async Task RefreshToken_Fail_InvalidToken()
     {
-        await using var context = TestDbContext.CreateWithUsers();
-        var logger = NullLogger<AuthService>.Instance;
-        var service = new AuthService(context, _config, logger, Mock.Of<IOAuthService>());
+        // Arrange
+        var request = new RefreshTokenRequest { RefreshToken = "invalid-token" };
+        _userRepositoryMock.Setup(x => x.GetByRefreshToken(request.RefreshToken)).ReturnsAsync((User?)null);
 
-        var result = await service.RefreshToken(new RefreshTokenRequest
-        {
-            RefreshToken = "invalid-refresh-token"
-        });
+        // Act
+        var result = await _authService.RefreshToken(request);
 
+        // Assert
         result.IsSuccess.Should().BeFalse();
         result.ErrorMessage.Should().Be("Invalid refresh token");
         result.ErrorCode.Should().Be(ErrorCode.BadRequest);
+
+        _userRepositoryMock.Verify(x => x.UpdateAsync(It.IsAny<User>()), Times.Never);
     }
 
     [Fact]
     public async Task RefreshToken_Fail_Expired()
     {
-        await using var context = TestDbContext.Create();
-        var logger = NullLogger<AuthService>.Instance;
-
-        context.Users.Add(new User
+        // Arrange
+        const string expiredRefreshToken = "expired-refresh-token";
+        var request = new RefreshTokenRequest { RefreshToken = expiredRefreshToken };
+        var existingUser = new User
         {
-            Id = 1,
-            Email = "expired@test.com",
-            PasswordHash = BCrypt.Net.BCrypt.HashPassword("PasswordTest"),
-            Role = UserRoles.User,
-            RefreshToken = "expired-token",
-            RefreshTokenExpiry = DateTime.UtcNow.AddDays(-1)
-        });
-        await context.SaveChangesAsync();
+            Email = MockEmail,
+            RefreshToken = expiredRefreshToken,
+            RefreshTokenExpiry = DateTime.UtcNow.AddDays(-1),
+            Role = UserRoles.User
+        };
 
-        var service = new AuthService(context, _config, logger, Mock.Of<IOAuthService>());
+        _userRepositoryMock.Setup(x => x.GetByRefreshToken(expiredRefreshToken)).ReturnsAsync(existingUser);
 
-        var result = await service.RefreshToken(new RefreshTokenRequest
-        {
-            RefreshToken = "expired-token"
-        });
+        // Act
+        var result = await _authService.RefreshToken(request);
 
+        // Assert
         result.IsSuccess.Should().BeFalse();
         result.ErrorMessage.Should().Be("Refresh token expired");
         result.ErrorCode.Should().Be(ErrorCode.BadRequest);
+
+        _userRepositoryMock.Verify(x => x.UpdateAsync(It.IsAny<User>()), Times.Never);
     }
 
+    #endregion
+
+    #region GoogleLogin Tests
+
     [Fact]
-    public async Task GoogleLogin_Success_NewUser()
+    public async Task GoogleLogin_Success_ExistingUserByGoogleId()
     {
         // Arrange
-        await using var context = TestDbContext.Create();
-        var logger = NullLogger<AuthService>.Instance;
-        var mockGoogleService = new Mock<IOAuthService>();
-        mockGoogleService.Setup(x => x.GoogleVerifyToken(It.IsAny<string>()))
-            .ReturnsAsync(new GoogleLoginResponse
-            {
-                GoogleId = "google-1",
-                Email = "google@test.com",
-                DisplayName = "Test User",
-                PictureUrl = "",
-                Verified = true
-            });
+        const string idToken = "valid-google-id-token";
+        var request = new GoogleLoginRequest { IdToken = idToken };
+        var googleUser = new GoogleLoginResponse
+        {
+            GoogleId = "google-user-id-123",
+            Email = "googleuser@example.com",
+            DisplayName = "Google User",
+            PictureUrl = "http://example.com/pic.jpg",
+            Verified = true
+        };
 
-        var service = new AuthService(context, _config, logger, mockGoogleService.Object);
+        var existingUser = new User
+        {
+            GoogleId = "google-user-id-123",
+            Email = "googleuser@example.com",
+            Role = UserRoles.User
+        };
+
+        _oauthServiceMock.Setup(x => x.GoogleVerifyToken(idToken)).ReturnsAsync(googleUser);
+        _userRepositoryMock.Setup(x => x.GetByGoogleIdAsync(idToken)).ReturnsAsync(existingUser);
 
         // Act
-        var result = await service.GoogleLogin(new GoogleLoginRequest
-        {
-            IdToken = "valid-token"
-        });
+        var result = await _authService.GoogleLogin(request);
 
         // Assert
         result.IsSuccess.Should().BeTrue();
+        result.Data.Should().NotBeNull();
+        result.Data!.AccessToken.Should().NotBeNullOrEmpty();
+        result.Data.RefreshToken.Should().NotBeNullOrEmpty();
+
+        existingUser.LastLoginAt.Should().NotBeNull();
+        existingUser.RefreshToken.Should().Be(result.Data.RefreshToken);
+
+        _userRepositoryMock.Verify(x => x.UpdateAsync(existingUser), Times.Once);
+    }
+
+    [Fact]
+    public async Task GoogleLogin_Success_LinkExistingLocalUserByEmail()
+    {
+        // Arrange
+        const string idToken = "valid-google-id-token";
+        var request = new GoogleLoginRequest { IdToken = idToken };
+        var googleUser = new GoogleLoginResponse
+        {
+            GoogleId = "google-user-id-123",
+            Email = MockEmail,
+            DisplayName = "Google Display Name",
+            PictureUrl = "http://example.com/pic.jpg",
+            Verified = true
+        };
+
+        var existingLocalUser = new User
+        {
+            Email = MockEmail,
+            GoogleId = null,
+            Role = UserRoles.User
+        };
+
+        _oauthServiceMock.Setup(x => x.GoogleVerifyToken(idToken)).ReturnsAsync(googleUser);
+        _userRepositoryMock.Setup(x => x.GetByGoogleIdAsync(idToken)).ReturnsAsync((User?)null);
+        _userRepositoryMock.Setup(x => x.GetByEmailAsync(googleUser.Email)).ReturnsAsync(existingLocalUser);
+
+        // Act
+        var result = await _authService.GoogleLogin(request);
+
+        // Assert
+        result.IsSuccess.Should().BeTrue();
+        existingLocalUser.GoogleId.Should().Be(googleUser.GoogleId);
+        existingLocalUser.PictureUrl.Should().Be(googleUser.PictureUrl);
+        existingLocalUser.DisplayName.Should().Be(googleUser.DisplayName);
+
+        _userRepositoryMock.Verify(x => x.UpdateAsync(existingLocalUser), Times.Once);
+    }
+
+    [Fact]
+    public async Task GoogleLogin_Fail_EmailAlreadyLinkedToDifferentGoogleAccount()
+    {
+        // Arrange
+        const string idToken = "valid-google-id-token";
+        var request = new GoogleLoginRequest { IdToken = idToken };
+        var googleUser = new GoogleLoginResponse
+        {
+            GoogleId = "google-user-id-123",
+            Email = MockEmail,
+            Verified = true
+        };
+
+        var existingUserLinkedToOtherAccount = new User
+        {
+            Email = MockEmail,
+            GoogleId = "existing-different-google-id",
+            Role = UserRoles.User
+        };
+
+        _oauthServiceMock.Setup(x => x.GoogleVerifyToken(idToken)).ReturnsAsync(googleUser);
+        _userRepositoryMock.Setup(x => x.GetByGoogleIdAsync(idToken)).ReturnsAsync((User?)null);
+        _userRepositoryMock.Setup(x => x.GetByEmailAsync(googleUser.Email)).ReturnsAsync(existingUserLinkedToOtherAccount);
+
+        // Act
+        var result = await _authService.GoogleLogin(request);
+
+        // Assert
+        result.IsSuccess.Should().BeFalse();
+        result.ErrorMessage.Should().Be("Email already linked to another account");
+        result.ErrorCode.Should().Be(ErrorCode.Conflict);
+
+        _userRepositoryMock.Verify(x => x.UpdateAsync(It.IsAny<User>()), Times.Never);
+    }
+
+    [Fact]
+    public async Task GoogleLogin_Success_CreateNewUser()
+    {
+        // Arrange
+        const string idToken = "valid-google-id-token";
+        var request = new GoogleLoginRequest { IdToken = idToken };
+        var googleUser = new GoogleLoginResponse
+        {
+            GoogleId = "google-user-id-123",
+            Email = "newgoogleuser@example.com",
+            DisplayName = "New Google User",
+            PictureUrl = "http://example.com/pic.jpg",
+            Verified = true
+        };
+
+        _oauthServiceMock.Setup(x => x.GoogleVerifyToken(idToken)).ReturnsAsync(googleUser);
+        _userRepositoryMock.Setup(x => x.GetByGoogleIdAsync(idToken)).ReturnsAsync((User?)null);
+        _userRepositoryMock.Setup(x => x.GetByEmailAsync(googleUser.Email)).ReturnsAsync((User?)null);
+        _userRepositoryMock.Setup(x => x.CreateAsync(It.IsAny<User>()))
+            .ReturnsAsync((User user) => user);
+
+        // Act
+        var result = await _authService.GoogleLogin(request);
+
+        // Assert
+        result.IsSuccess.Should().BeTrue();
+        result.Data.Should().NotBeNull();
         result.Data!.AccessToken.Should().NotBeNullOrEmpty();
 
-        var user = context.Users.FirstOrDefault(u => u.Email == "google@test.com");
-        user.Should().NotBeNull();
-        user!.GoogleId.Should().Be("google-1");
-    }
+        _userRepositoryMock.Verify(x => x.CreateAsync(It.Is<User>(u =>
+            u.Email == googleUser.Email &&
+            u.GoogleId == googleUser.GoogleId &&
+            u.DisplayName == googleUser.DisplayName &&
+            u.PictureUrl == googleUser.PictureUrl &&
+            u.Role == UserRoles.User
+        )), Times.Once);
 
-    [Fact]
-    public async Task GoogleLogin_Success_ExistUser()
-    {
-        // Arrange
-        await using var context = TestDbContext.Create();
-        context.Users.Add(new User
-        {
-            GoogleId = "exist-1",
-            Email = "exist@test.com",
-            DisplayName = "Exist User"
-        });
-        await context.SaveChangesAsync();
-
-        var logger = NullLogger<AuthService>.Instance;
-
-        var mockGoogleService = new Mock<IOAuthService>();
-        mockGoogleService.Setup(x => x.GoogleVerifyToken(It.IsAny<string>()))
-            .ReturnsAsync(new GoogleLoginResponse
-            {
-                GoogleId = "exist-1",
-                Email = "exist@test.com",
-                Verified = true
-            });
-
-        var service = new AuthService(context, _config, logger, mockGoogleService.Object);
-
-        // Act
-        var result = await service.GoogleLogin(new GoogleLoginRequest
-        {
-            IdToken = "valid-token"
-        });
-
-        // Assert
-        result.IsSuccess.Should().BeTrue();
-        context.Users.Count().Should().Be(1);
+        _userRepositoryMock.Verify(x => x.UpdateAsync(It.Is<User>(u => u.Email == googleUser.Email)), Times.Once);
     }
 
     [Fact]
     public async Task GoogleLogin_Fail_InvalidToken()
     {
         // Arrange
-        await using var context = TestDbContext.Create();
-        var logger = NullLogger<AuthService>.Instance;
-        var mockGoogleService = new Mock<IOAuthService>();
-        mockGoogleService.Setup(x => x.GoogleVerifyToken(It.IsAny<string>()))
-            .ReturnsAsync((GoogleLoginResponse?)null);
+        const string idToken = "invalid-token";
+        var request = new GoogleLoginRequest { IdToken = idToken };
+        _oauthServiceMock.Setup(x => x.GoogleVerifyToken(idToken)).ReturnsAsync((GoogleLoginResponse?)null);
 
-        var service = new AuthService(context, _config, logger, mockGoogleService.Object);
-        
         // Act
-        var result = await service.GoogleLogin(new GoogleLoginRequest
-        {
-            IdToken = "invalid-token"
-        });
-        
+        var result = await _authService.GoogleLogin(request);
+
         // Assert
         result.IsSuccess.Should().BeFalse();
+        result.ErrorMessage.Should().Be("Invalid google token");
         result.ErrorCode.Should().Be(ErrorCode.BadRequest);
+
+        _userRepositoryMock.Verify(x => x.CreateAsync(It.IsAny<User>()), Times.Never);
+        _userRepositoryMock.Verify(x => x.UpdateAsync(It.IsAny<User>()), Times.Never);
     }
-    
-    */
+
+    #endregion
 }
