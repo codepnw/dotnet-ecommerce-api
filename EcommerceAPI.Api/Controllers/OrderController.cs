@@ -21,4 +21,15 @@ public class OrderController(IOrderService service) : ControllerBase
 
         return Ok(result.Data);
     }
+
+    [HttpPost("{id:guid}/cancel")]
+    public async Task<IActionResult> Cancel(Guid id)
+    {
+        var result = await service.CancelOrderAsync(id);
+
+        if (!result.IsSuccess)
+            return BadRequest(result.ErrorMessage);
+
+        return Ok();
+    }
 }

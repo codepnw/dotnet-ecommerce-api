@@ -1,6 +1,232 @@
-@AuthAPI_HostAddress = http://localhost:5145
+@baseUrl = http://localhost:5145
+@apiVersion = v1
+@contentType = application/json
 
-GET {{AuthAPI_HostAddress}}/weatherforecast/
-Accept: application/json
+### =========================================================================
+### 1. AUTHENTICATION & USER MANAGEMENT (api/v1/auth)
+### =========================================================================
 
-###
+### 1.1 Register New User
+# @name registerUser
+POST {{baseUrl}}/api/{{apiVersion}}/auth/register
+Content-Type: {{contentType}}
+
+{
+  "email": "user@example.com",
+  "password": "UserPassword123!",
+  "role": "User"
+}
+
+### 1.2 Register New Admin
+# @name registerAdmin
+POST {{baseUrl}}/api/{{apiVersion}}/auth/register
+Content-Type: {{contentType}}
+
+{
+  "email": "admin@example.com",
+  "password": "AdminPassword123!",
+  "role": "Admin"
+}
+
+### 1.3 Login (User) - Rate limited (5 req/min)
+# @name loginUser
+POST {{baseUrl}}/api/{{apiVersion}}/auth/login
+Content-Type: {{contentType}}
+
+{
+  "email": "user@example.com",
+  "password": "UserPassword123!"
+}
+
+### 1.4 Login (Admin) - Rate limited (5 req/min)
+# @name loginAdmin
+POST {{baseUrl}}/api/{{apiVersion}}/auth/login
+Content-Type: {{contentType}}
+
+{
+  "email": "admin@example.com",
+  "password": "AdminPassword123!"
+}
+
+### -------------------------------------------------------------------------
+### Tokens extracted from login responses (or set manually below)
+### -------------------------------------------------------------------------
+@userToken = {{loginUser.response.body.accessToken}}
+@adminToken = {{loginAdmin.response.body.accessToken}}
+@userRefreshToken = {{loginUser.response.body.refreshToken}}
+
+### 1.5 Refresh Access Token
+# @name refreshToken
+POST {{baseUrl}}/api/{{apiVersion}}/auth/refresh
+Content-Type: {{contentType}}
+Authorization: Bearer {{userToken}}
+
+{
+  "refreshToken": "{{userRefreshToken}}"
+}
+
+### 1.6 Google Login - Rate limited (5 req/min)
+# @name googleLogin
+POST {{baseUrl}}/api/{{apiVersion}}/auth/google
+Content-Type: {{contentType}}
+
+{
+  "idToken": "sample_google_id_token_here"
+}
+
+### 1.7 Get Current User Profile (Requires Authentication)
+# @name getCurrentUser
+GET {{baseUrl}}/api/{{apiVersion}}/auth/me
+Authorization: Bearer {{userToken}}
+
+
+### =========================================================================
+### 2. CATEGORIES (api/v1/categories)
+### =========================================================================
+
+### 2.1 Create Category (Requires Admin Role)
+# @name createCategory
+POST {{baseUrl}}/api/{{apiVersion}}/categories
+Content-Type: {{contentType}}
+Authorization: Bearer {{adminToken}}
+
+{
+  "name": "Electronics",
+  "description": "Electronic gadgets, accessories, and smart devices"
+}
+
+### Extracted Category ID from creation response (or set manually)
+@categoryId = {{createCategory.response.body.id}}
+
+### 2.2 Get All Categories (Public / Allow Anonymous)
+# @name getAllCategories
+GET {{baseUrl}}/api/{{apiVersion}}/categories
+Accept: {{contentType}}
+
+### 2.3 Get Category By ID (Requires Admin Role)
+# @name getCategoryById
+GET {{baseUrl}}/api/{{apiVersion}}/categories/{{categoryId}}
+Authorization: Bearer {{adminToken}}
+
+### 2.4 Update Category (Requires Admin Role)
+# @name updateCategory
+PATCH {{baseUrl}}/api/{{apiVersion}}/categories/{{categoryId}}
+Content-Type: {{contentType}}
+Authorization: Bearer {{adminToken}}
+
+{
+  "name": "Electronics & Computers",
+  "description": "Updated description for electronic gadgets and computing devices"
+}
+
+### 2.5 Delete Category (Requires Admin Role)
+# @name deleteCategory
+DELETE {{baseUrl}}/api/{{apiVersion}}/categories/{{categoryId}}
+Authorization: Bearer {{adminToken}}
+
+
+### =========================================================================
+### 3. PRODUCTS (api/v1/products)
+### =========================================================================
+
+### 3.1 Create Product (Requires Admin Role)
+# @name createProduct
+POST {{baseUrl}}/api/{{apiVersion}}/products
+Content-Type: {{contentType}}
+Authorization: Bearer {{adminToken}}
+
+{
+  "name": "Wireless Noise-Canceling Headphones",
+  "sku": "PROD-HEADPHONE-001",
+  "priceAmount": 4990.00,
+  "priceCurrency": "THB",
+  "categoryId": "{{categoryId}}"
+}
+
+### Extracted Product ID from creation response (or set manually)
+@productId = {{createProduct.response.body.id}}
+
+### 3.2 Get All Products (Public / Allow Anonymous)
+# @name getAllProducts
+GET {{baseUrl}}/api/{{apiVersion}}/products
+Accept: {{contentType}}
+
+### 3.3 Get Product By ID (Requires Admin Role)
+# @name getProductById
+GET {{baseUrl}}/api/{{apiVersion}}/products/{{productId}}
+Authorization: Bearer {{adminToken}}
+
+### 3.4 Update Product (Requires Admin Role)
+# @name updateProduct
+PATCH {{baseUrl}}/api/{{apiVersion}}/products/{{productId}}
+Content-Type: {{contentType}}
+Authorization: Bearer {{adminToken}}
+
+{
+  "name": "Wireless Noise-Canceling Headphones Pro",
+  "priceAmount": 5490.00,
+  "priceCurrency": "THB",
+  "categoryId": "{{categoryId}}"
+}
+
+### 3.5 Delete Product (Requires Admin Role)
+# @name deleteProduct
+DELETE {{baseUrl}}/api/{{apiVersion}}/products/{{productId}}
+Authorization: Bearer {{adminToken}}
+
+
+### =========================================================================
+### 4. SHOPPING CART (api/v1/cart)
+### =========================================================================
+
+### 4.1 Get Cart (Requires Authentication)
+# @name getCart
+GET {{baseUrl}}/api/{{apiVersion}}/cart
+Authorization: Bearer {{userToken}}
+
+### 4.2 Add Item to Cart (Requires Authentication)
+# @name addToCart
+POST {{baseUrl}}/api/{{apiVersion}}/cart/add
+Content-Type: {{contentType}}
+Authorization: Bearer {{userToken}}
+
+{
+  "productId": "{{productId}}",
+  "quantity": 2
+}
+
+### 4.3 Update Cart Item Quantity (Requires Authentication)
+# @name updateCartQuantity
+PUT {{baseUrl}}/api/{{apiVersion}}/cart/update
+Content-Type: {{contentType}}
+Authorization: Bearer {{userToken}}
+
+{
+  "productId": "{{productId}}",
+  "newQuantity": 3
+}
+
+### 4.4 Remove Item from Cart (Requires Authentication)
+# @name removeCartItem
+POST {{baseUrl}}/api/{{apiVersion}}/cart/remove
+Content-Type: {{contentType}}
+Authorization: Bearer {{userToken}}
+
+{
+  "productId": "{{productId}}"
+}
+
+### 4.5 Clear Cart (Requires Authentication)
+# @name clearCart
+GET {{baseUrl}}/api/{{apiVersion}}/cart/clear
+Authorization: Bearer {{userToken}}
+
+
+### =========================================================================
+### 5. ORDERS & CHECKOUT (api/v1/order)
+### =========================================================================
+
+### 5.1 Checkout Cart to Create Order (Requires Authentication)
+# @name checkoutOrder
+POST {{baseUrl}}/api/{{apiVersion}}/order/checkout
+Authorization: Bearer {{userToken}}

@@ -16,7 +16,7 @@ public class OrderService(
     public async Task<Result<OrderResponse>> CheckoutAsync()
     {
         var userId = currentUserService.UserId;
-        
+
         var cart = await cartRepository.GetCartByUserIdAsync(userId);
 
         if (cart is null || cart.Items.Count == 0)
@@ -28,9 +28,6 @@ public class OrderService(
         foreach (var cartItem in cart.Items)
         {
             var inventory = cartItem.Product.Inventory;
-
-            if (inventory.AvailableQuantity < cartItem.Quantity)
-                return Result<OrderResponse>.Failure("Product out of stock", ErrorCode.Conflict);
 
             // Calculate Price
             var subTotal = cartItem.Product.Price.Amount * cartItem.Quantity;
@@ -47,14 +44,16 @@ public class OrderService(
             orderItems.Add(orderItem);
 
             // Decrease Quantity & Reserved Quantity
-            inventory.ConfirmSale(cartItem.Quantity);
+            var result = inventory.ConfirmSale(cartItem.Quantity);
+
+            if (!result.IsSuccess)
+                return Result<OrderResponse>.Failure(result.ErrorMessage!, result.ErrorCode);
         }
 
         var order = new Order
         {
             UserId = userId,
             TotalPrice = totalPrice,
-            Status = OrderStatus.Pending,
             Items = orderItems
         };
 
@@ -80,5 +79,41 @@ public class OrderService(
         };
 
         return Result<OrderResponse>.Success(response);
+    }
+
+    public async Task<Result> CancelOrderAsync(Guid orderId)
+    {
+        // Get Order
+        var order = await orderRepository.GetOrderByIdAsync(orderId);
+
+        if (order is null)
+            return Result.Failure("Order not found", ErrorCode.NotFound);
+
+        // Check User Permissions
+        var userId = currentUserService.UserId;
+        var userRole = currentUserService.Role;
+
+        if (order.UserId != userId && userRole != UserRoles.Admin)
+            return Result.Failure("Cannot cancel order: no permissions", ErrorCode.Forbidden);
+
+        // Update Order Status to Cancel
+        var result = order.Cancel();
+        
+        if (!result.IsSuccess)
+            return Result.Failure(result.ErrorMessage!, result.ErrorCode);
+
+        // Return Product Stock
+        foreach (var item in order.Items)
+        {
+            var stockResult = item.Product.Inventory.ReturnStock(item.Quantity);
+
+            if (!stockResult.IsSuccess)
+                return Result.Failure(stockResult.ErrorMessage!, stockResult.ErrorCode);
+        }
+
+        // Save Db
+        await orderRepository.SaveChangeAsync();
+
+        return Result.Success();
     }
 }
