@@ -8,6 +8,8 @@
 
 .secrets
 
+EcommerceAPI.Api/EcommerceAPI.http
+
 # log files
 EcommerceAPI.Api/logs
 

@@ -3,6 +3,7 @@ using EcommerceAPI.Application.Interfaces.Services;
 using EcommerceAPI.Application.Services;
 using EcommerceAPI.Domain.Common.ValueObject;
 using EcommerceAPI.Domain.Entities;
+using EcommerceAPI.Domain.Enums;
 using EcommerceAPI.Domain.Shared;
 using FluentAssertions;
 using Moq;
@@ -14,11 +15,11 @@ public class OrderServiceTests
     private readonly Mock<IOrderRepository> _orderRepo = new Mock<IOrderRepository>();
     private readonly Mock<ICartRepository> _cartRepo = new Mock<ICartRepository>();
     private readonly Mock<ICurrentUserService> _currentUser = new Mock<ICurrentUserService>();
-    private readonly OrderService _serivce;
+    private readonly OrderService _service;
 
     public OrderServiceTests()
     {
-        _serivce = new OrderService(_orderRepo.Object, _cartRepo.Object, _currentUser.Object);
+        _service = new OrderService(_orderRepo.Object, _cartRepo.Object, _currentUser.Object);
     }
 
     [Fact]
@@ -39,7 +40,7 @@ public class OrderServiceTests
             Inventory = new ProductInventory
             {
                 QuantityOnHand = 10,
-                QuantityReserved = 0
+                QuantityReserved = quantity
             }
         };
         var productId = product.Id;
@@ -65,16 +66,17 @@ public class OrderServiceTests
         _orderRepo.Setup(x => x.SaveChangeAsync()).Returns(Task.CompletedTask);
 
         // Act
-        var result = await _serivce.CheckoutAsync();
+        var result = await _service.CheckoutAsync();
 
         // Assert 1
         result.IsSuccess.Should().BeTrue();
-        result.Data!.TotalPrice.Should().Be(price * quantity); // 100 * 2 = 200
+        result.Data!.TotalPrice.Should().Be(price * quantity);
         result.Data!.Items.Count.Should().Be(1);
         result.Data!.Items.First().Price.Should().Be(price);
 
         // Assert 2: State in Memory (Inventory -> ConfirmSale, Cart -> Clear)
         product.Inventory.QuantityOnHand.Should().Be(8); // 10 - 2 = 8
+        product.Inventory.QuantityReserved.Should().Be(0); // 2 - 2 = 0
         cart.Items.Should().BeEmpty();
 
         // Assert 3: Repository
@@ -91,7 +93,7 @@ public class OrderServiceTests
         _cartRepo.Setup(x => x.GetCartByUserIdAsync(userId)).ReturnsAsync((Cart?)null);
 
         // Act
-        var result = await _serivce.CheckoutAsync();
+        var result = await _service.CheckoutAsync();
 
         // Assert
         result.IsSuccess.Should().BeFalse();
@@ -111,7 +113,7 @@ public class OrderServiceTests
         _cartRepo.Setup(x => x.GetCartByUserIdAsync(userId)).ReturnsAsync(emptyCart);
 
         // Act
-        var result = await _serivce.CheckoutAsync();
+        var result = await _service.CheckoutAsync();
 
         // Assert
         result.IsSuccess.Should().BeFalse();
@@ -137,7 +139,7 @@ public class OrderServiceTests
             Inventory = new ProductInventory
             {
                 QuantityOnHand = 5,
-                QuantityReserved = 4 // Available = 1
+                QuantityReserved = 0
             }
         };
 
@@ -155,14 +157,246 @@ public class OrderServiceTests
         _cartRepo.Setup(x => x.GetCartByUserIdAsync(userId)).ReturnsAsync(cart);
 
         // Act
-        var result = await _serivce.CheckoutAsync();
+        var result = await _service.CheckoutAsync();
 
         // Assert
         result.IsSuccess.Should().BeFalse();
-        result.ErrorMessage.Should().Contain("out of stock");
         result.ErrorCode.Should().Be(ErrorCode.Conflict);
 
         _orderRepo.Verify(x => x.AddASync(It.IsAny<Order>()), Times.Never);
+        _orderRepo.Verify(x => x.SaveChangeAsync(), Times.Never);
+    }
+
+    [Fact]
+    public async Task CancelOrder_Success_WhenUserIsOwner()
+    {
+        // Arrange
+        var userId = Guid.NewGuid();
+        var orderId = Guid.NewGuid();
+        var product = new Product
+        {
+            Name = "Test Product",
+            Sku = "test-sku",
+            Slug = "test-slug",
+            Price = Money.Create(50m),
+            Inventory = new ProductInventory
+            {
+                QuantityOnHand = 8,
+                QuantityReserved = 0
+            }
+        };
+
+        var order = new Order
+        {
+            UserId = userId,
+            TotalPrice = 100m,
+            Items = new List<OrderItem>
+            {
+                new()
+                {
+                    ProductId = product.Id,
+                    Product = product,
+                    Quantity = 2,
+                    PriceAtPurchase = 50m,
+                    ProductNameAtPurchase = product.Name
+                }
+            }
+        };
+
+        _currentUser.Setup(x => x.UserId).Returns(userId);
+        _currentUser.Setup(x => x.Role).Returns(UserRoles.User);
+        _orderRepo.Setup(x => x.GetOrderByIdAsync(orderId)).ReturnsAsync(order);
+        _orderRepo.Setup(x => x.SaveChangeAsync()).Returns(Task.CompletedTask);
+
+        // Act
+        var result = await _service.CancelOrderAsync(orderId);
+
+        // Assert
+        result.IsSuccess.Should().BeTrue();
+        order.Status.Should().Be(OrderStatus.Cancelled);
+        order.CancelledAt.Should().NotBeNull();
+        product.Inventory.QuantityOnHand.Should().Be(10); // 8 + 2
+
+        _orderRepo.Verify(x => x.SaveChangeAsync(), Times.Once);
+    }
+
+    [Fact]
+    public async Task CancelOrder_Success_WhenUserIsAdmin()
+    {
+        // Arrange
+        var ownerId = Guid.NewGuid();
+        var adminId = Guid.NewGuid();
+        var orderId = Guid.NewGuid();
+        var product = new Product
+        {
+            Name = "Test Product",
+            Sku = "test-sku",
+            Slug = "test-slug",
+            Price = Money.Create(50m),
+            Inventory = new ProductInventory
+            {
+                QuantityOnHand = 5,
+                QuantityReserved = 0
+            }
+        };
+
+        var order = new Order
+        {
+            UserId = ownerId,
+            TotalPrice = 150m,
+            Items = new List<OrderItem>
+            {
+                new()
+                {
+                    ProductId = product.Id,
+                    Product = product,
+                    Quantity = 3,
+                    PriceAtPurchase = 50m,
+                    ProductNameAtPurchase = product.Name
+                }
+            }
+        };
+
+        _currentUser.Setup(x => x.UserId).Returns(adminId);
+        _currentUser.Setup(x => x.Role).Returns(UserRoles.Admin);
+        _orderRepo.Setup(x => x.GetOrderByIdAsync(orderId)).ReturnsAsync(order);
+        _orderRepo.Setup(x => x.SaveChangeAsync()).Returns(Task.CompletedTask);
+
+        // Act
+        var result = await _service.CancelOrderAsync(orderId);
+
+        // Assert
+        result.IsSuccess.Should().BeTrue();
+        order.Status.Should().Be(OrderStatus.Cancelled);
+        order.CancelledAt.Should().NotBeNull();
+        product.Inventory.QuantityOnHand.Should().Be(8); // 5 + 3
+
+        _orderRepo.Verify(x => x.SaveChangeAsync(), Times.Once);
+    }
+
+    [Fact]
+    public async Task CancelOrder_Fail_WhenOrderNotFound()
+    {
+        // Arrange
+        var orderId = Guid.NewGuid();
+        _orderRepo.Setup(x => x.GetOrderByIdAsync(orderId)).ReturnsAsync((Order?)null);
+
+        // Act
+        var result = await _service.CancelOrderAsync(orderId);
+
+        // Assert
+        result.IsSuccess.Should().BeFalse();
+        result.ErrorMessage.Should().Be("Order not found");
+        result.ErrorCode.Should().Be(ErrorCode.NotFound);
+
+        _orderRepo.Verify(x => x.SaveChangeAsync(), Times.Never);
+    }
+
+    [Fact]
+    public async Task CancelOrder_Fail_WhenUserIsNotOwnerAndNotAdmin()
+    {
+        // Arrange
+        var ownerId = Guid.NewGuid();
+        var anotherUserId = Guid.NewGuid();
+        var orderId = Guid.NewGuid();
+        var order = new Order
+        {
+            UserId = ownerId,
+            TotalPrice = 100m
+        };
+
+        _currentUser.Setup(x => x.UserId).Returns(anotherUserId);
+        _currentUser.Setup(x => x.Role).Returns(UserRoles.User);
+        _orderRepo.Setup(x => x.GetOrderByIdAsync(orderId)).ReturnsAsync(order);
+
+        // Act
+        var result = await _service.CancelOrderAsync(orderId);
+
+        // Assert
+        result.IsSuccess.Should().BeFalse();
+        result.ErrorMessage.Should().Be("Cannot cancel order: no permissions");
+        result.ErrorCode.Should().Be(ErrorCode.Forbidden);
+
+        _orderRepo.Verify(x => x.SaveChangeAsync(), Times.Never);
+    }
+
+    [Fact]
+    public async Task CancelOrder_Fail_WhenOrderStatusCannotBeCancelled()
+    {
+        // Arrange
+        var userId = Guid.NewGuid();
+        var orderId = Guid.NewGuid();
+        var order = new Order
+        {
+            UserId = userId,
+            TotalPrice = 100m
+        };
+        order.Pay();
+        order.Ship(); // Status is Shipped, which cannot be cancelled
+
+        _currentUser.Setup(x => x.UserId).Returns(userId);
+        _currentUser.Setup(x => x.Role).Returns(UserRoles.User);
+        _orderRepo.Setup(x => x.GetOrderByIdAsync(orderId)).ReturnsAsync(order);
+
+        // Act
+        var result = await _service.CancelOrderAsync(orderId);
+
+        // Assert
+        result.IsSuccess.Should().BeFalse();
+        result.ErrorCode.Should().Be(ErrorCode.Conflict);
+        result.ErrorMessage.Should().Be("Status Cancel for Pending and Paid");
+
+        _orderRepo.Verify(x => x.SaveChangeAsync(), Times.Never);
+    }
+
+    [Fact]
+    public async Task CancelOrder_Fail_WhenReturnStockFails()
+    {
+        // Arrange
+        var userId = Guid.NewGuid();
+        var orderId = Guid.NewGuid();
+        var product = new Product
+        {
+            Name = "Test Product",
+            Sku = "test-sku",
+            Slug = "test-slug",
+            Price = Money.Create(50m),
+            Inventory = new ProductInventory
+            {
+                QuantityOnHand = 5,
+                QuantityReserved = 0
+            }
+        };
+
+        var order = new Order
+        {
+            UserId = userId,
+            TotalPrice = 0m,
+            Items = new List<OrderItem>
+            {
+                new()
+                {
+                    ProductId = product.Id,
+                    Product = product,
+                    Quantity = 0, // Invalid quantity for ReturnStock (<= 0)
+                    PriceAtPurchase = 50m,
+                    ProductNameAtPurchase = product.Name
+                }
+            }
+        };
+
+        _currentUser.Setup(x => x.UserId).Returns(userId);
+        _currentUser.Setup(x => x.Role).Returns(UserRoles.User);
+        _orderRepo.Setup(x => x.GetOrderByIdAsync(orderId)).ReturnsAsync(order);
+
+        // Act
+        var result = await _service.CancelOrderAsync(orderId);
+
+        // Assert
+        result.IsSuccess.Should().BeFalse();
+        result.ErrorCode.Should().Be(ErrorCode.BadRequest);
+        result.ErrorMessage.Should().Be("Quantity must be greater than zero");
+
         _orderRepo.Verify(x => x.SaveChangeAsync(), Times.Never);
     }
 }

@@ -17,9 +17,13 @@ public class ProductInventory : BaseAuditableEntity
     // Calculate Product Quantity Available
     public int AvailableQuantity => QuantityOnHand - QuantityReserved;
 
-    // Method Business Logic (Encapsulation in DDD)
+    // ------------- Logic --------------
+    
     public Result ReserveStock(int quantity)
     {
+        if (quantity <= 0)
+            return Result.Failure("Quantity must be greater than zero", ErrorCode.BadRequest);
+        
         if (AvailableQuantity < quantity)
             return Result.Failure("Insufficient stock available", ErrorCode.Conflict);
 
@@ -27,19 +31,40 @@ public class ProductInventory : BaseAuditableEntity
         return Result.Success();
     }
 
-    public void ReleaseStock(int quantity) => QuantityReserved -= quantity;
-
-    public void ConfirmSale(int quantity)
+    public Result ReleaseStock(int quantity)
     {
         if (quantity <= 0)
-            throw new ArgumentException("Quantity to confirm must be greater than zero");
+            return Result.Failure("Quantity must be greater than zero", ErrorCode.BadRequest);
 
-        if (QuantityOnHand < quantity)
-            throw new InvalidOperationException(
-                $"Cannot confirm sale available stock is {QuantityOnHand}, but requested {quantity}."
-            );
+        if (quantity > QuantityReserved)
+            return Result.Failure("Cannot release more than reserved", ErrorCode.Conflict);
+
+        QuantityReserved -= quantity;
+        return Result.Success();
+    }
+
+    public Result ConfirmSale(int quantity)
+    {
+        if (quantity <= 0)
+            return Result.Failure("Quantity must be greater than zero", ErrorCode.BadRequest);
+
+        if (quantity > QuantityReserved)
+            return Result.Failure("Cannot confirm more than reserved", ErrorCode.Conflict);
+
+        if (quantity > QuantityOnHand)
+            return Result.Failure("Cannot confirm more than on hand", ErrorCode.Conflict);
 
         QuantityOnHand -= quantity;
         QuantityReserved -= quantity;
+        return Result.Success();
+    }
+
+    public Result ReturnStock(int quantity)
+    {
+        if (quantity <= 0)
+            return Result.Failure("Quantity must be greater than zero", ErrorCode.BadRequest);
+
+        QuantityOnHand += quantity;
+        return Result.Success();
     }
 }

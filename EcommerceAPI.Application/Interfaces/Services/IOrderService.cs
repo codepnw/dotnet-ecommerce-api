@@ -6,4 +6,5 @@ namespace EcommerceAPI.Application.Interfaces.Services;
 public interface IOrderService
 {
     Task<Result<OrderResponse>> CheckoutAsync();
+    Task<Result> CancelOrderAsync(Guid orderId);
 }
