@@ -90,10 +90,7 @@ public class OrderService(
             return Result.Failure("Order not found", ErrorCode.NotFound);
 
         // Check User Permissions
-        var userId = currentUserService.UserId;
-        var userRole = currentUserService.Role;
-
-        if (order.UserId != userId && userRole != UserRoles.Admin)
+        if (!IsOwnerOrAdmin(order.UserId))
             return Result.Failure("Cannot cancel order: no permissions", ErrorCode.Forbidden);
 
         // Update Order Status to Cancel
@@ -115,5 +112,87 @@ public class OrderService(
         await orderRepository.SaveChangeAsync();
 
         return Result.Success();
+    }
+
+    public async Task<Result> PayOrderAsync(Guid orderId)
+    {
+        var order = await orderRepository.GetOrderByIdAsync(orderId);
+
+        if (order is null)
+            return Result.Failure("Order not found", ErrorCode.NotFound);
+
+        // Check User Permissions
+        if (!IsOwnerOrAdmin(order.UserId))
+            return Result.Failure("Cannot pay order: no permissions", ErrorCode.Forbidden);
+
+        // Update order status
+        var result = order.Pay();
+
+        if (!result.IsSuccess)
+            return Result.Failure(result.ErrorMessage!, result.ErrorCode);
+
+        // Save DB
+        await orderRepository.SaveChangeAsync();
+
+        return Result.Success();
+    }
+
+    public async Task<Result> ShipOrderAsync(Guid orderId)
+    {
+        var order = await orderRepository.GetOrderByIdAsync(orderId);
+
+        if (order is null)
+            return Result.Failure("Order not found", ErrorCode.NotFound);
+
+        // Check Admin Permissions
+        if (!IsAdminOnly(order.UserId))
+            return Result.Failure("Cannot ship order: admin only", ErrorCode.Forbidden);
+
+        // Update order status
+        var result = order.Ship();
+
+        if (!result.IsSuccess)
+            return Result.Failure(result.ErrorMessage!, result.ErrorCode);
+
+        // Save DB
+        await orderRepository.SaveChangeAsync();
+
+        return Result.Success();
+    }
+
+    public async Task<Result> CompleteOrderAsync(Guid orderId)
+    {
+        var order = await orderRepository.GetOrderByIdAsync(orderId);
+
+        if (order is null)
+            return Result.Failure("Order not found", ErrorCode.NotFound);
+
+        // Check Admin Permissions
+        if (!IsAdminOnly(order.UserId))
+            return Result.Failure("Cannot complete order: admin only", ErrorCode.Forbidden);
+
+        // Update order status
+        var result = order.Complete();
+
+        if (!result.IsSuccess)
+            return Result.Failure(result.ErrorMessage!, result.ErrorCode);
+
+        // Save DB
+        await orderRepository.SaveChangeAsync();
+
+        return Result.Success();
+    }
+
+    private bool IsOwnerOrAdmin(Guid ownerId)
+    {
+        var userId = currentUserService.UserId;
+        var userRole = currentUserService.Role;
+        return ownerId == userId || userRole == UserRoles.Admin;
+    }
+
+    private bool IsAdminOnly(Guid ownerId)
+    {
+        var userRole = currentUserService.Role;
+        return userRole == UserRoles.Admin;
     }
 }
