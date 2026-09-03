@@ -399,4 +399,340 @@ public class OrderServiceTests
 
         _orderRepo.Verify(x => x.SaveChangeAsync(), Times.Never);
     }
+
+    [Fact]
+    public async Task PayOrder_Success_WhenUserIsOwner()
+    {
+        // Arrange
+        var userId = Guid.NewGuid();
+        var orderId = Guid.NewGuid();
+        var order = new Order
+        {
+            UserId = userId,
+            TotalPrice = 100m
+        };
+
+        _currentUser.Setup(x => x.UserId).Returns(userId);
+        _currentUser.Setup(x => x.Role).Returns(UserRoles.User);
+        _orderRepo.Setup(x => x.GetOrderByIdAsync(orderId)).ReturnsAsync(order);
+        _orderRepo.Setup(x => x.SaveChangeAsync()).Returns(Task.CompletedTask);
+
+        // Act
+        var result = await _service.PayOrderAsync(orderId);
+
+        // Assert
+        result.IsSuccess.Should().BeTrue();
+        order.Status.Should().Be(OrderStatus.Paid);
+        order.PaidAt.Should().NotBeNull();
+
+        _orderRepo.Verify(x => x.SaveChangeAsync(), Times.Once);
+    }
+
+    [Fact]
+    public async Task PayOrder_Success_WhenUserIsAdmin()
+    {
+        // Arrange
+        var ownerId = Guid.NewGuid();
+        var adminId = Guid.NewGuid();
+        var orderId = Guid.NewGuid();
+        var order = new Order
+        {
+            UserId = ownerId,
+            TotalPrice = 100m
+        };
+
+        _currentUser.Setup(x => x.UserId).Returns(adminId);
+        _currentUser.Setup(x => x.Role).Returns(UserRoles.Admin);
+        _orderRepo.Setup(x => x.GetOrderByIdAsync(orderId)).ReturnsAsync(order);
+        _orderRepo.Setup(x => x.SaveChangeAsync()).Returns(Task.CompletedTask);
+
+        // Act
+        var result = await _service.PayOrderAsync(orderId);
+
+        // Assert
+        result.IsSuccess.Should().BeTrue();
+        order.Status.Should().Be(OrderStatus.Paid);
+        order.PaidAt.Should().NotBeNull();
+
+        _orderRepo.Verify(x => x.SaveChangeAsync(), Times.Once);
+    }
+
+    [Fact]
+    public async Task PayOrder_Fail_WhenOrderNotFound()
+    {
+        // Arrange
+        var orderId = Guid.NewGuid();
+        _orderRepo.Setup(x => x.GetOrderByIdAsync(orderId)).ReturnsAsync((Order?)null);
+
+        // Act
+        var result = await _service.PayOrderAsync(orderId);
+
+        // Assert
+        result.IsSuccess.Should().BeFalse();
+        result.ErrorMessage.Should().Be("Order not found");
+        result.ErrorCode.Should().Be(ErrorCode.NotFound);
+
+        _orderRepo.Verify(x => x.SaveChangeAsync(), Times.Never);
+    }
+
+    [Fact]
+    public async Task PayOrder_Fail_WhenUserIsNotOwnerAndNotAdmin()
+    {
+        // Arrange
+        var ownerId = Guid.NewGuid();
+        var anotherUserId = Guid.NewGuid();
+        var orderId = Guid.NewGuid();
+        var order = new Order
+        {
+            UserId = ownerId,
+            TotalPrice = 100m
+        };
+
+        _currentUser.Setup(x => x.UserId).Returns(anotherUserId);
+        _currentUser.Setup(x => x.Role).Returns(UserRoles.User);
+        _orderRepo.Setup(x => x.GetOrderByIdAsync(orderId)).ReturnsAsync(order);
+
+        // Act
+        var result = await _service.PayOrderAsync(orderId);
+
+        // Assert
+        result.IsSuccess.Should().BeFalse();
+        result.ErrorMessage.Should().Be("Cannot pay order: no permissions");
+        result.ErrorCode.Should().Be(ErrorCode.Forbidden);
+
+        _orderRepo.Verify(x => x.SaveChangeAsync(), Times.Never);
+    }
+
+    [Fact]
+    public async Task PayOrder_Fail_WhenOrderStatusCannotBePaid()
+    {
+        // Arrange
+        var userId = Guid.NewGuid();
+        var orderId = Guid.NewGuid();
+        var order = new Order
+        {
+            UserId = userId,
+            TotalPrice = 100m
+        };
+        order.Pay(); // Status is already Paid
+
+        _currentUser.Setup(x => x.UserId).Returns(userId);
+        _currentUser.Setup(x => x.Role).Returns(UserRoles.User);
+        _orderRepo.Setup(x => x.GetOrderByIdAsync(orderId)).ReturnsAsync(order);
+
+        // Act
+        var result = await _service.PayOrderAsync(orderId);
+
+        // Assert
+        result.IsSuccess.Should().BeFalse();
+        result.ErrorCode.Should().Be(ErrorCode.Conflict);
+        result.ErrorMessage.Should().Be("Status Paid for Pending only");
+
+        _orderRepo.Verify(x => x.SaveChangeAsync(), Times.Never);
+    }
+
+    [Fact]
+    public async Task ShipOrder_Success_WhenUserIsAdmin()
+    {
+        // Arrange
+        var ownerId = Guid.NewGuid();
+        var adminId = Guid.NewGuid();
+        var orderId = Guid.NewGuid();
+        var order = new Order
+        {
+            UserId = ownerId,
+            TotalPrice = 100m
+        };
+        order.Pay(); // Status must be Paid to Ship
+
+        _currentUser.Setup(x => x.Role).Returns(UserRoles.Admin);
+        _orderRepo.Setup(x => x.GetOrderByIdAsync(orderId)).ReturnsAsync(order);
+        _orderRepo.Setup(x => x.SaveChangeAsync()).Returns(Task.CompletedTask);
+
+        // Act
+        var result = await _service.ShipOrderAsync(orderId);
+
+        // Assert
+        result.IsSuccess.Should().BeTrue();
+        order.Status.Should().Be(OrderStatus.Shipped);
+        order.ShippedAt.Should().NotBeNull();
+
+        _orderRepo.Verify(x => x.SaveChangeAsync(), Times.Once);
+    }
+
+    [Fact]
+    public async Task ShipOrder_Fail_WhenOrderNotFound()
+    {
+        // Arrange
+        var orderId = Guid.NewGuid();
+        _orderRepo.Setup(x => x.GetOrderByIdAsync(orderId)).ReturnsAsync((Order?)null);
+
+        // Act
+        var result = await _service.ShipOrderAsync(orderId);
+
+        // Assert
+        result.IsSuccess.Should().BeFalse();
+        result.ErrorMessage.Should().Be("Order not found");
+        result.ErrorCode.Should().Be(ErrorCode.NotFound);
+
+        _orderRepo.Verify(x => x.SaveChangeAsync(), Times.Never);
+    }
+
+    [Fact]
+    public async Task ShipOrder_Fail_WhenUserIsNotAdmin()
+    {
+        // Arrange
+        var ownerId = Guid.NewGuid();
+        var orderId = Guid.NewGuid();
+        var order = new Order
+        {
+            UserId = ownerId,
+            TotalPrice = 100m
+        };
+        order.Pay();
+
+        _currentUser.Setup(x => x.UserId).Returns(ownerId);
+        _currentUser.Setup(x => x.Role).Returns(UserRoles.User);
+        _orderRepo.Setup(x => x.GetOrderByIdAsync(orderId)).ReturnsAsync(order);
+
+        // Act
+        var result = await _service.ShipOrderAsync(orderId);
+
+        // Assert
+        result.IsSuccess.Should().BeFalse();
+        result.ErrorMessage.Should().Be("Cannot ship order: admin only");
+        result.ErrorCode.Should().Be(ErrorCode.Forbidden);
+
+        _orderRepo.Verify(x => x.SaveChangeAsync(), Times.Never);
+    }
+
+    [Fact]
+    public async Task ShipOrder_Fail_WhenOrderStatusCannotBeShipped()
+    {
+        // Arrange
+        var ownerId = Guid.NewGuid();
+        var orderId = Guid.NewGuid();
+        var order = new Order
+        {
+            UserId = ownerId,
+            TotalPrice = 100m
+        }; // Status is Pending, not Paid
+
+        _currentUser.Setup(x => x.Role).Returns(UserRoles.Admin);
+        _orderRepo.Setup(x => x.GetOrderByIdAsync(orderId)).ReturnsAsync(order);
+
+        // Act
+        var result = await _service.ShipOrderAsync(orderId);
+
+        // Assert
+        result.IsSuccess.Should().BeFalse();
+        result.ErrorCode.Should().Be(ErrorCode.Conflict);
+        result.ErrorMessage.Should().Be("Status Shipped for Paid only");
+
+        _orderRepo.Verify(x => x.SaveChangeAsync(), Times.Never);
+    }
+
+    [Fact]
+    public async Task CompleteOrder_Success_WhenUserIsAdmin()
+    {
+        // Arrange
+        var ownerId = Guid.NewGuid();
+        var adminId = Guid.NewGuid();
+        var orderId = Guid.NewGuid();
+        var order = new Order
+        {
+            UserId = ownerId,
+            TotalPrice = 100m
+        };
+        order.Pay();
+        order.Ship(); // Status must be Shipped to Complete
+
+        _currentUser.Setup(x => x.Role).Returns(UserRoles.Admin);
+        _orderRepo.Setup(x => x.GetOrderByIdAsync(orderId)).ReturnsAsync(order);
+        _orderRepo.Setup(x => x.SaveChangeAsync()).Returns(Task.CompletedTask);
+
+        // Act
+        var result = await _service.CompleteOrderAsync(orderId);
+
+        // Assert
+        result.IsSuccess.Should().BeTrue();
+        order.Status.Should().Be(OrderStatus.Completed);
+        order.CompletedAt.Should().NotBeNull();
+
+        _orderRepo.Verify(x => x.SaveChangeAsync(), Times.Once);
+    }
+
+    [Fact]
+    public async Task CompleteOrder_Fail_WhenOrderNotFound()
+    {
+        // Arrange
+        var orderId = Guid.NewGuid();
+        _orderRepo.Setup(x => x.GetOrderByIdAsync(orderId)).ReturnsAsync((Order?)null);
+
+        // Act
+        var result = await _service.CompleteOrderAsync(orderId);
+
+        // Assert
+        result.IsSuccess.Should().BeFalse();
+        result.ErrorMessage.Should().Be("Order not found");
+        result.ErrorCode.Should().Be(ErrorCode.NotFound);
+
+        _orderRepo.Verify(x => x.SaveChangeAsync(), Times.Never);
+    }
+
+    [Fact]
+    public async Task CompleteOrder_Fail_WhenUserIsNotAdmin()
+    {
+        // Arrange
+        var ownerId = Guid.NewGuid();
+        var orderId = Guid.NewGuid();
+        var order = new Order
+        {
+            UserId = ownerId,
+            TotalPrice = 100m
+        };
+        order.Pay();
+        order.Ship();
+
+        _currentUser.Setup(x => x.UserId).Returns(ownerId);
+        _currentUser.Setup(x => x.Role).Returns(UserRoles.User);
+        _orderRepo.Setup(x => x.GetOrderByIdAsync(orderId)).ReturnsAsync(order);
+
+        // Act
+        var result = await _service.CompleteOrderAsync(orderId);
+
+        // Assert
+        result.IsSuccess.Should().BeFalse();
+        result.ErrorMessage.Should().Be("Cannot complete order: admin only");
+        result.ErrorCode.Should().Be(ErrorCode.Forbidden);
+
+        _orderRepo.Verify(x => x.SaveChangeAsync(), Times.Never);
+    }
+
+    [Fact]
+    public async Task CompleteOrder_Fail_WhenOrderStatusCannotBeCompleted()
+    {
+        // Arrange
+        var ownerId = Guid.NewGuid();
+        var orderId = Guid.NewGuid();
+        var order = new Order
+        {
+            UserId = ownerId,
+            TotalPrice = 100m
+        };
+        order.Pay(); // Status is Paid, not Shipped
+
+        _currentUser.Setup(x => x.Role).Returns(UserRoles.Admin);
+        _orderRepo.Setup(x => x.GetOrderByIdAsync(orderId)).ReturnsAsync(order);
+
+        // Act
+        var result = await _service.CompleteOrderAsync(orderId);
+
+        // Assert
+        result.IsSuccess.Should().BeFalse();
+        result.ErrorCode.Should().Be(ErrorCode.Conflict);
+        result.ErrorMessage.Should().Be("Status Completed for Shipped only");
+
+        _orderRepo.Verify(x => x.SaveChangeAsync(), Times.Never);
+    }
 }

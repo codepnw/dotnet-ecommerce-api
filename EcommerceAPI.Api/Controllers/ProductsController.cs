@@ -2,6 +2,7 @@
 using EcommerceAPI.Application.Commons.Constrants;
 using EcommerceAPI.Application.DTOs.Products;
 using EcommerceAPI.Application.Interfaces.Services;
+using EcommerceAPI.Application.Models;
 using EcommerceAPI.Application.Services;
 using EcommerceAPI.Domain.Shared;
 using Microsoft.AspNetCore.Authorization;
@@ -38,9 +39,9 @@ public class ProductsController(IProductService productService) : ControllerBase
 
     [HttpGet]
     [AllowAnonymous]
-    public async Task<IActionResult> GetAllProducts()
+    public async Task<IActionResult> GetAllProducts([FromQuery] ProductQueryParams query)
     {
-        var result = await productService.GetAllProductsAsync();
+        var result = await productService.GetAllProductsAsync(query);
 
         if (!result.IsSuccess)
             return BadRequest(result.ErrorMessage);
