@@ -1,4 +1,5 @@
 using EcommerceAPI.Application.DTOs.Products;
+using EcommerceAPI.Application.Models;
 using EcommerceAPI.Domain.Shared;
 
 namespace EcommerceAPI.Application.Interfaces.Services;
@@ -6,7 +7,7 @@ namespace EcommerceAPI.Application.Interfaces.Services;
 public interface IProductService
 {
     Task<Result<ProductResponse>> CreateProductAsync(CreateProductRequest request);
-    Task<Result<List<ProductResponse>>> GetAllProductsAsync();
+    Task<Result<PagedResult<ProductResponse>>> GetAllProductsAsync(ProductQueryParams query);
     Task<Result<ProductResponse>> GetProductByIdAsync(Guid id);
     Task<Result> UpdateProductAsync(Guid id, UpdateProductRequest request);
     Task<Result> DeleteProductAsync(Guid id);
