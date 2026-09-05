@@ -1,5 +1,6 @@
 using Asp.Versioning;
 using EcommerceAPI.Application.Interfaces.Services;
+using EcommerceAPI.Application.Models;
 using EcommerceAPI.Domain.Enums;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -8,10 +9,32 @@ namespace EcommerceAPI.Controllers;
 
 [ApiController]
 [ApiVersion("1.0")]
-[Route("api/v{version:apiVersion}/order")]
+[Route("api/v{version:apiVersion}/orders")]
 [Authorize]
 public class OrderController(IOrderService service) : ControllerBase
 {
+    [HttpGet("admin")]
+    public async Task<IActionResult> GetAllForAdmin(OrderQueryParams query)
+    {
+        var result = await service.GetAllOrdersForAdminAsync(query);
+
+        if (!result.IsSuccess)
+            return BadRequest(result.ErrorMessage);
+
+        return Ok(result.Data);
+    }
+
+    [HttpGet]
+    public async Task<IActionResult> GetAllForOwner(OrderQueryParams query)
+    {
+        var result = await service.GetAllOrdersForOwnerAsync(query);
+
+        if (!result.IsSuccess)
+            return BadRequest(result.ErrorMessage);
+
+        return Ok(result.Data);
+    }
+
     [HttpPost("checkout")]
     public async Task<IActionResult> Checkout()
     {
@@ -39,7 +62,7 @@ public class OrderController(IOrderService service) : ControllerBase
     {
         var result = await service.PayOrderAsync(id);
 
-         if (!result.IsSuccess)
+        if (!result.IsSuccess)
             return BadRequest(result.ErrorMessage);
 
         return Ok();
@@ -51,7 +74,7 @@ public class OrderController(IOrderService service) : ControllerBase
     {
         var result = await service.ShipOrderAsync(id);
 
-         if (!result.IsSuccess)
+        if (!result.IsSuccess)
             return BadRequest(result.ErrorMessage);
 
         return Ok();
@@ -63,7 +86,7 @@ public class OrderController(IOrderService service) : ControllerBase
     {
         var result = await service.CompleteOrderAsync(id);
 
-         if (!result.IsSuccess)
+        if (!result.IsSuccess)
             return BadRequest(result.ErrorMessage);
 
         return Ok();
