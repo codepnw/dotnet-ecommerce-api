@@ -1,6 +1,7 @@
 using EcommerceAPI.Application.DTOs.Orders;
 using EcommerceAPI.Application.Interfaces.Repositories;
 using EcommerceAPI.Application.Interfaces.Services;
+using EcommerceAPI.Application.Models;
 using EcommerceAPI.Domain.Entities;
 using EcommerceAPI.Domain.Enums;
 using EcommerceAPI.Domain.Shared;
@@ -13,6 +14,27 @@ public class OrderService(
     ICurrentUserService currentUserService
 ) : IOrderService
 {
+    public async Task<Result<PagedResult<OrderResponse>>> GetAllOrdersForAdminAsync(OrderQueryParams query)
+    {
+        var userId = currentUserService.UserId;
+
+        if (!IsAdminOnly(userId))
+            return Result<PagedResult<OrderResponse>>.Failure("Admin Only", ErrorCode.Forbidden);
+
+        var response = await FindAllOrders(query, null);
+
+        return Result<PagedResult<OrderResponse>>.Success(response);
+    }
+
+    public async Task<Result<PagedResult<OrderResponse>>> GetAllOrdersForOwnerAsync(OrderQueryParams query)
+    {
+        var userId = currentUserService.UserId;
+
+        var response = await FindAllOrders(query, userId);
+
+        return Result<PagedResult<OrderResponse>>.Success(response);
+    }
+
     public async Task<Result<OrderResponse>> CheckoutAsync()
     {
         var userId = currentUserService.UserId;
@@ -95,7 +117,7 @@ public class OrderService(
 
         // Update Order Status to Cancel
         var result = order.Cancel();
-        
+
         if (!result.IsSuccess)
             return Result.Failure(result.ErrorMessage!, result.ErrorCode);
 
@@ -194,5 +216,33 @@ public class OrderService(
     {
         var userRole = currentUserService.Role;
         return userRole == UserRoles.Admin;
+    }
+
+    private async Task<PagedResult<OrderResponse>> FindAllOrders(OrderQueryParams query, Guid? userId)
+    {
+        var result = await orderRepository.GetAllOrdersAsync(query, userId);
+
+        var orders = result.Items.Select(o => new OrderResponse
+        {
+            Id = o.Id,
+            TotalPrice = o.TotalPrice,
+            Status = o.Status.ToString(),
+
+            Items = o.Items.Select(i => new OrderItemResponse
+            {
+                ProductId = i.ProductId,
+                ProductName = i.ProductNameAtPurchase,
+                Price = i.PriceAtPurchase,
+                Quantity = i.Quantity
+            }).ToList()
+        }).ToList();
+
+        return new PagedResult<OrderResponse>
+        {
+            Items = orders,
+            PageNumber = result.PageNumber,
+            PageSize = result.PageSize,
+            TotalCount = result.TotalCount
+        };
     }
 }
